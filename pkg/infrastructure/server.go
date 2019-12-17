@@ -1,6 +1,7 @@
 package infrastructure
 
 import (
+	"bytes"
 	"database/sql"
 	"fmt"
 	slog "github.com/go-eden/slf4go"
@@ -97,6 +98,11 @@ func (s *Server) HandleHomePage() http.HandlerFunc {
 			http.NotFound(w, r)
 			return
 		}
+		if r.Method != http.MethodGet {
+			s.Slog.Error("Incorrect Method: " + r.Method)
+			http.NotFound(w, r)
+			return
+		}
 		snippets, err := s.SnippetRepo.Fetch(10)
 		if err != nil {
 			s.Slog.Error(err)
@@ -111,10 +117,7 @@ func (s *Server) HandleHomePage() http.HandlerFunc {
 			Snippets: snippets,
 		}
 
-		err = tmpl.Execute(w, data)
-		if err != nil {
-			s.serverError(w, err)
-		}
+		s.CatchTemplateErrors(tmpl, data, w)
 	}
 }
 
@@ -126,8 +129,9 @@ func (s *Server) HandleDisplaySnippet() http.HandlerFunc {
 		"./ui/html/base.layout.html",
 		"./ui/html/footer.partial.html",
 	}
-
+	// is this better than a map??
 	init.Do(func() {
+		s.Slog.Info("Parsed Template(s) first time")
 		tmpl = template.Must(template.ParseFiles(files...))
 	})
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -152,11 +156,30 @@ func (s *Server) HandleDisplaySnippet() http.HandlerFunc {
 			return
 
 		}
-		err = tmpl.ExecuteTemplate(w, "show.page.html", snippet)
-		if err != nil {
-			s.Slog.Error(err)
-			s.serverError(w, err)
-		}
+		s.CatchTemplateErrors(tmpl, snippet, w)
+	}
+}
+
+func (s *Server) CatchTemplateErrors(tmpl *template.Template, data interface{}, w http.ResponseWriter) {
+	// in case of templates with errors
+	// and you don't want to show partial pages
+	// Initialize a new buffer.
+	buf := new(bytes.Buffer)
+	// Write the template to the buffer, instead of straight to the
+	// http.ResponseWriter. If there's an error, call our serverError helper and then
+	// return.
+	err := tmpl.Execute(buf, data)
+	//err = tmpl.ExecuteTemplate(w, "show.page.html", snippet)
+	if err != nil {
+		s.Slog.Error(err)
+		s.serverError(w, err)
+		return
+	}
+	_, err = buf.WriteTo(w)
+	if err != nil {
+		s.Slog.Error(err)
+		s.serverError(w, err)
+		return
 	}
 }
 
