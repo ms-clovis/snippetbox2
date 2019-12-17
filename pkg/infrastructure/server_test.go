@@ -1,0 +1,85 @@
+package infrastructure
+
+import (
+	"fmt"
+	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/ms-clovis/snippetbox/pkg/models"
+	"github.com/ms-clovis/snippetbox/pkg/repository/mysql"
+	"net/http/httptest"
+	"testing"
+	"time"
+)
+
+func TestServer_HandleHome(t *testing.T) {
+	s := NewServer()
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	snippet := &models.Snippet{
+		ID:      1,
+		Title:   "Test snippet",
+		Content: "I am a test snippet",
+		Created: time.Now(),
+		Expires: time.Now().Add(time.Hour),
+	}
+
+	rows := mock.NewRows([]string{"id", "title", "content", "created", "expired"}).
+		AddRow(snippet.ID, snippet.Title,
+			snippet.Content, snippet.Created, snippet.Expires)
+	mock.ExpectQuery("SELECT").
+		WillReturnRows(rows)
+	s.SnippetRepo = mysql.NewSnippetRepo(db)
+	defer s.SnippetRepo.DB.Close()
+	h := s.HandleHomePage()
+
+	ts := httptest.NewServer(h)
+	defer ts.Close()
+	req := httptest.NewRequest("Get", "/home", nil)
+
+	resp := httptest.NewRecorder()
+	h.ServeHTTP(resp, req)
+	if resp.Code != 200 {
+		t.Fatalf("expected status code to be 200, but got: %d", resp.Code)
+	}
+	fmt.Println("__________________")
+	fmt.Println(resp.Body)
+
+}
+
+func TestServer_HandleCreateSnippet(t *testing.T) {
+	s := NewServer()
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	snippet := &models.Snippet{
+		ID:      1,
+		Title:   "Test snippet",
+		Content: "I am a test snippet",
+		Created: time.Now(),
+		Expires: time.Now().Add(time.Hour),
+	}
+	s.SnippetRepo = mysql.NewSnippetRepo(db)
+
+	mock.ExpectExec("INSERT ").
+		WithArgs(snippet.Title, snippet.Content, snippet.Created, snippet.Expires).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	h := s.HandleCreateSnippet()
+
+	ts := httptest.NewServer(h)
+	defer ts.Close()
+
+	// body will eventually be snippet values !!!!!
+
+	req := httptest.NewRequest("POST", "/snippet/create", nil)
+
+	resp := httptest.NewRecorder()
+	h.ServeHTTP(resp, req)
+	if resp.Code != 200 {
+		t.Fatalf("expected status code to be 200, but got: %d", resp.Code)
+	}
+	fmt.Println("__________________")
+	fmt.Println(resp.Body)
+}

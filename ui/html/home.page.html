@@ -1,0 +1,14 @@
+{{template "base" .}}
+
+{{define "title"}}Home{{end}}
+
+{{define "main"}}
+    <h2>Latest Snippets</h2>
+        {{range .Snippets}}
+
+            <h5>{{ .Title }}:</h5>
+
+            <p>{{.Content }}</p>
+            <br>
+        {{end}}
+{{end}}
