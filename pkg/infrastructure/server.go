@@ -25,10 +25,10 @@ type Server struct {
 	Slog *slog.Logger
 }
 
-func NewServer() Server {
+func NewServer() *Server {
 	slog.Debug("Should not see this")
 
-	s := Server{}
+	s := &Server{}
 	s.Slog = slog.GetLogger()
 	return s
 }
@@ -36,8 +36,8 @@ func NewServer() Server {
 func (s *Server) logPathAndMethod(r *http.Request) {
 	s.Slog.Info("Path: " + r.URL.Path)
 	s.Slog.Info("Method: " + r.Method)
-	//s.InfoLog.Println("Path: "+ r.URL.Path)
-	//s.InfoLog.Println("Method: "+ r.Method)
+	//s.Slog.Info("%s - %s %s %s", r.RemoteAddr, r.Proto, r.Method, r.URL.RequestURI())
+
 }
 
 // The serverError helper writes an error message and stack trace to the errorLog,
@@ -79,20 +79,18 @@ func (s *Server) SetRepo(driverName string, dsnString string) {
 
 func (s *Server) HandleHomePage() http.HandlerFunc {
 
-	var init sync.Once
-	var tmpl *template.Template
+	files := []string{
+		"./ui/html/home.page.html",
+		"./ui/html/base.layout.html",
+		"./ui/html/footer.partial.html",
+	}
+	tmpl := s.ParseTemplates(files)
 
-	s.Slog.Info("Initializing tmpl")
-	init.Do(func() {
-		files := []string{
-			"./ui/html/home.page.html",
-			"./ui/html/base.layout.html",
-			"./ui/html/footer.partial.html",
-		}
-		tmpl = template.Must(template.ParseFiles(files...))
-	})
 	return func(w http.ResponseWriter, r *http.Request) {
 		s.logPathAndMethod(r)
+		if !s.isCorrectHttpMethod(r, w, http.MethodGet) {
+			return
+		}
 		if r.URL.Path != "/" && r.URL.Path != "/home" {
 			s.Slog.Error("Incorrect Path: " + r.URL.Path)
 			http.NotFound(w, r)
@@ -121,24 +119,34 @@ func (s *Server) HandleHomePage() http.HandlerFunc {
 	}
 }
 
-func (s *Server) HandleDisplaySnippet() http.HandlerFunc {
+func (s *Server) ParseTemplates(files []string) *template.Template {
 	var tmpl *template.Template
 	var init sync.Once
-	files := []string{
-		"./ui/html/show.page.html",
-		"./ui/html/base.layout.html",
-		"./ui/html/footer.partial.html",
-	}
+
 	// is this better than a map??
 	init.Do(func() {
 		s.Slog.Info("Parsed Template(s) first time")
 		tmpl = template.Must(template.ParseFiles(files...))
 	})
+	return tmpl
+}
+
+func (s *Server) HandleDisplaySnippet() http.HandlerFunc {
+
+	files := []string{
+		"./ui/html/show.page.html",
+		"./ui/html/base.layout.html",
+		"./ui/html/footer.partial.html",
+	}
+	tmpl := s.ParseTemplates(files)
 	return func(w http.ResponseWriter, r *http.Request) {
 		//w.Header().Set("Content-Type", "application/json")
 		// use above for json responses
 
 		s.logPathAndMethod(r)
+		if !s.isCorrectHttpMethod(r, w, http.MethodGet) {
+			return
+		}
 
 		id, err := strconv.Atoi(r.URL.Query().Get("id"))
 		if err != nil || id < 1 {
@@ -186,11 +194,7 @@ func (s *Server) CatchTemplateErrors(tmpl *template.Template, data interface{}, 
 func (s *Server) HandleCreateSnippet() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		s.logPathAndMethod(req)
-		if req.Method != http.MethodPost {
-			w.Header().Set("Allow", http.MethodPost)
-			//w.WriteHeader(405)
-			//http.Error(w, "Method Not Allowed", 405)
-			s.clientError(w, http.StatusMethodNotAllowed)
+		if !s.isCorrectHttpMethod(req, w, http.MethodPost) {
 			return
 		}
 		_, err := w.Write([]byte("Create a new snippet..."))
@@ -198,4 +202,49 @@ func (s *Server) HandleCreateSnippet() http.HandlerFunc {
 			log.Fatal(err)
 		}
 	}
+}
+
+func (s *Server) HandleLatestSnippet() http.HandlerFunc {
+	files := []string{
+		"./ui/html/show.page.html",
+		"./ui/html/base.layout.html",
+		"./ui/html/footer.partial.html",
+	}
+	tmpl := s.ParseTemplates(files)
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		//w.Header().Set("Content-Type", "application/json")
+		// use above for json responses
+
+		s.logPathAndMethod(r)
+		if !s.isCorrectHttpMethod(r, w, http.MethodGet) {
+			return
+		}
+
+		snippet, err := s.SnippetRepo.Latest()
+		if err != nil {
+			s.Slog.Error(err)
+			if err == models.ERRNoRecordFound {
+				s.clientError(w, http.StatusNoContent)
+			} else {
+				http.NotFound(w, r)
+			}
+			return
+
+		}
+		s.CatchTemplateErrors(tmpl, snippet, w)
+	}
+}
+
+func (s *Server) isCorrectHttpMethod(r *http.Request, w http.ResponseWriter, method string) bool {
+	if r.Method != method {
+
+		s.Slog.Errorf("Method %v is wrong Http Method", method)
+		w.Header().Set("Allow", method)
+		//w.WriteHeader(405)
+		//http.Error(w, "Method Not Allowed", 405)
+		s.clientError(w, http.StatusMethodNotAllowed)
+		return false
+	}
+	return true
 }

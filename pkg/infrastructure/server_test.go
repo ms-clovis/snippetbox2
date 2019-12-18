@@ -5,17 +5,15 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/ms-clovis/snippetbox/pkg/models"
 	"github.com/ms-clovis/snippetbox/pkg/repository/mysql"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 )
 
 func TestServer_HandleHome(t *testing.T) {
-	s := NewServer()
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
-	}
+	s, mock := setUpServerTesting(t)
+	defer s.SnippetRepo.DB.Close()
 	snippet := &models.Snippet{
 		ID:      1,
 		Title:   "Test snippet",
@@ -29,8 +27,7 @@ func TestServer_HandleHome(t *testing.T) {
 			snippet.Content, snippet.Created, snippet.Expires)
 	mock.ExpectQuery("SELECT").
 		WillReturnRows(rows)
-	s.SnippetRepo = mysql.NewSnippetRepo(db)
-	defer s.SnippetRepo.DB.Close()
+
 	h := s.HandleHomePage()
 
 	ts := httptest.NewServer(h)
@@ -47,12 +44,51 @@ func TestServer_HandleHome(t *testing.T) {
 
 }
 
-func TestServer_HandleCreateSnippet(t *testing.T) {
+func TestServer_WrongMethod(t *testing.T) {
+	s, _ := setUpServerTesting(t)
+	defer s.SnippetRepo.DB.Close()
+
+	h := s.HandleCreateSnippet()
+	ts := httptest.NewServer(h)
+	defer ts.Close()
+
+	// body will eventually be snippet values !!!!!
+
+	req := httptest.NewRequest("PUT", "/snippet/create", nil)
+
+	resp := httptest.NewRecorder()
+	h.ServeHTTP(resp, req)
+	if resp.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("expected status code to be 405, but got: %d", resp.Code)
+	}
+	fmt.Println("__________________")
+	fmt.Println(resp.Body)
+
+	//req := httptest.NewRequest("POST", "/snippet/create", nil)
+}
+
+func setUpServerTesting(t *testing.T) (*Server, sqlmock.Sqlmock) {
 	s := NewServer()
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
+
+	s.SnippetRepo = mysql.NewSnippetRepo(db)
+	return s, mock
+}
+
+func TestServer_HandleCreateSnippet(t *testing.T) {
+	//s := NewServer()
+	//	//db, mock, err := sqlmock.New()
+	//	//if err != nil {
+	//	//	t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	//	//}
+	//	//
+	//	//s.SnippetRepo = mysql.NewSnippetRepo(db)
+	s, mock := setUpServerTesting(t)
+	defer s.SnippetRepo.DB.Close()
+
 	snippet := &models.Snippet{
 		ID:      1,
 		Title:   "Test snippet",
@@ -60,8 +96,6 @@ func TestServer_HandleCreateSnippet(t *testing.T) {
 		Created: time.Now(),
 		Expires: time.Now().Add(time.Hour),
 	}
-	s.SnippetRepo = mysql.NewSnippetRepo(db)
-
 	mock.ExpectExec("INSERT ").
 		WithArgs(snippet.Title, snippet.Content, snippet.Created, snippet.Expires).
 		WillReturnResult(sqlmock.NewResult(0, 1))
