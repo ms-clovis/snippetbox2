@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
+	"github.com/gin-gonic/gin"
 	slog "github.com/go-eden/slf4go"
 	"github.com/ms-clovis/snippetbox/pkg/models"
 	"github.com/ms-clovis/snippetbox/pkg/repository/mysql"
@@ -18,7 +19,7 @@ import (
 type Server struct {
 	//Repo   *sql.DB
 	SnippetRepo *mysql.SnippetRepo
-	Router      *http.ServeMux
+	Router      *gin.Engine
 	//// logging (for now)
 	//ErrorLog *log.Logger
 	//InfoLog *log.Logger
@@ -88,6 +89,7 @@ func (s *Server) HandleHomePage() http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		s.logPathAndMethod(r)
+
 		if !s.isCorrectHttpMethod(r, w, http.MethodGet) {
 			return
 		}
@@ -140,6 +142,7 @@ func (s *Server) HandleDisplaySnippet() http.HandlerFunc {
 	}
 	tmpl := s.ParseTemplates(files)
 	return func(w http.ResponseWriter, r *http.Request) {
+
 		//w.Header().Set("Content-Type", "application/json")
 		// use above for json responses
 
@@ -193,6 +196,7 @@ func (s *Server) CatchTemplateErrors(tmpl *template.Template, data interface{}, 
 
 func (s *Server) HandleCreateSnippet() http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
+
 		s.logPathAndMethod(req)
 		if !s.isCorrectHttpMethod(req, w, http.MethodPost) {
 			return

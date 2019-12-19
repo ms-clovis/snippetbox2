@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"github.com/gin-gonic/gin"
 	slog "github.com/go-eden/slf4go"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/ms-clovis/snippetbox/pkg/infrastructure"
@@ -26,7 +27,7 @@ func main() {
 
 	s := infrastructure.NewServer()
 	// choose router type
-	s.Router = http.NewServeMux()
+	s.Router = gin.New()
 
 	infoLog.Println("Opening database snippetbox on default port")
 	s.SetRepo("mysql", *dsn)
