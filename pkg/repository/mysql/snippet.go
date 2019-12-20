@@ -14,6 +14,8 @@ func NewSnippetRepo(db *sql.DB) *SnippetRepo {
 	//fetchPS,err := db.Prepare()
 	return &SnippetRepo{DB: db}
 }
+
+//noinspection ALL
 func (sr *SnippetRepo) fetch(query string, arg int) ([]*models.Snippet, error) {
 	//var ret []models.Snippet
 	//var snip models.Snippet
@@ -30,7 +32,7 @@ func (sr *SnippetRepo) fetch(query string, arg int) ([]*models.Snippet, error) {
 
 	for rows.Next() {
 		s := &models.Snippet{}
-		err = rows.Scan(&s.ID, &s.Title, &s.Content, &s.Created, &s.Expires)
+		err = rows.Scan(&s.ID, &s.Title, &s.Content, &s.Created, &s.Expires, &s.Author)
 
 		ret = append(ret, s)
 	}
@@ -55,8 +57,8 @@ func (sr *SnippetRepo) FetchAll() ([]*models.Snippet, error) {
 
 func (sr *SnippetRepo) Fetch(numberToFetch int) ([]*models.Snippet, error) {
 
-	query := "SELECT id, title, content, created, expires " +
-		"FROM snippets WHERE expires > UTC_TIMESTAMP() " +
+	query := "SELECT s.id, s.title, s.content, s.created, s.expires,u.name " +
+		"FROM snippets s INNER JOIN users u ON s.author = u.id WHERE s.expires > UTC_TIMESTAMP() " +
 		"ORDER BY created DESC "
 
 	if numberToFetch > 0 {
@@ -73,15 +75,15 @@ func (sr *SnippetRepo) Delete(m *models.Snippet) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	m = nil
+
 	aff, err := result.RowsAffected()
 	return aff == 1, err
 }
 
 func (sr *SnippetRepo) GetByID(ID int) (*models.Snippet, error) {
-	query := "SELECT id, title, content, created, expires " +
-		"FROM snippets WHERE expires > UTC_TIMESTAMP() " +
-		"AND id = ? "
+	query := "SELECT s.id, s.title, s.content, s.created, s.expires,u.name " +
+		"FROM snippets s INNER JOIN users u ON s.author = u.id WHERE s.expires > UTC_TIMESTAMP() " +
+		"AND s.id = ? "
 	snippets, err := sr.fetch(query, ID)
 	if err != nil {
 
