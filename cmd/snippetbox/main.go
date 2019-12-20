@@ -29,6 +29,8 @@ func main() {
 	// choose router type
 	s.Router = gin.New()
 
+	//s.Router.SetFuncMap(template.FuncMap{"displayDate":handlers.DisplayDate})
+
 	infoLog.Println("Opening database snippetbox on default port")
 	s.SetRepo("mysql", *dsn)
 	defer s.SnippetRepo.DB.Close()
