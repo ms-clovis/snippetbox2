@@ -11,4 +11,9 @@ type Snippet struct {
 	//NullABLEFoo sql.NullString
 	Created time.Time `json:"created"`
 	Expires time.Time `json:"expires"`
+	Author  string    `json:"author"`
+}
+
+func NewEmptySnippet() *Snippet {
+	return &Snippet{}
 }
