@@ -1,0 +1,39 @@
+{{template "base" .}}
+
+{{define "title"}}Create a New Snippet{{end}}
+
+{{define "main"}}
+    {{if .Errors}}
+        <h4 class="error">Errors in Form:</h4>
+            <ul>
+            {{range .Errors}}
+                <li>{{.}}</li>
+            {{end}}
+            </ul>
+        <br>
+    {{end}}
+    <form action='/snippet/create' method='POST'>
+        <div>
+            {{if .Errors}}
+                <label class="error">Title: {{index .Errors "Title"}}</label>
+            {{else}}
+                <label>Title:</label>
+            {{end}}
+
+            <input type='text' name='title' value="{{.Snippet.Title }}">
+        </div>
+        <div>
+            <label>Content:</label>
+            <textarea name='content'></textarea>
+        </div>
+        <div>
+            <label>Delete in:</label>
+            <input type='radio' name='expires' value='365' checked> One Year
+            <input type='radio' name='expires' value='7'> One Week
+            <input type='radio' name='expires' value='1'> One Day
+        </div>
+        <div>
+            <input type='submit' value='Publish snippet'>
+        </div>
+    </form>
+{{end}}
