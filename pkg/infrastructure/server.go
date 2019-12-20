@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	slog "github.com/go-eden/slf4go"
+	"github.com/ms-clovis/snippetbox/pkg/handlers"
 	"github.com/ms-clovis/snippetbox/pkg/models"
 	"github.com/ms-clovis/snippetbox/pkg/repository/mysql"
 	"html/template"
@@ -13,7 +14,10 @@ import (
 	"net/http"
 	"runtime/debug"
 	"strconv"
+	"strings"
 	"sync"
+	"time"
+	"unicode/utf8"
 )
 
 type Server struct {
@@ -85,7 +89,7 @@ func (s *Server) HandleHomePage() http.HandlerFunc {
 		"./ui/html/base.layout.html",
 		"./ui/html/footer.partial.html",
 	}
-	tmpl := s.ParseTemplates(files)
+	tmpl := s.ParseTemplates("home.page.html", files)
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		s.logPathAndMethod(r)
@@ -121,14 +125,16 @@ func (s *Server) HandleHomePage() http.HandlerFunc {
 	}
 }
 
-func (s *Server) ParseTemplates(files []string) *template.Template {
+func (s *Server) ParseTemplates(fileName string, files []string) *template.Template {
 	var tmpl *template.Template
 	var init sync.Once
 
 	// is this better than a map??
 	init.Do(func() {
 		s.Slog.Info("Parsed Template(s) first time")
-		tmpl = template.Must(template.ParseFiles(files...))
+		//s.Router.SetFuncMap(template.FuncMap{"displayDate":handlers.DisplayDate})
+		tmpl = template.Must(template.New(fileName).Funcs(template.FuncMap{"displayDate": handlers.DisplayDate}).ParseFiles(files...))
+		//tmpl = template.Must(template.ParseFiles(files...))
 	})
 	return tmpl
 }
@@ -140,7 +146,7 @@ func (s *Server) HandleDisplaySnippet() http.HandlerFunc {
 		"./ui/html/base.layout.html",
 		"./ui/html/footer.partial.html",
 	}
-	tmpl := s.ParseTemplates(files)
+	tmpl := s.ParseTemplates("show.page.html", files)
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		//w.Header().Set("Content-Type", "application/json")
@@ -151,16 +157,23 @@ func (s *Server) HandleDisplaySnippet() http.HandlerFunc {
 			return
 		}
 
-		id, err := strconv.Atoi(r.URL.Query().Get("id"))
+		urlStr := r.URL.String()
+		s.Slog.Info(urlStr)
+		var idStr string = "0"
+		urlVals := strings.Split(urlStr, "/")
+		if len(urlVals) == 4 {
+			idStr = urlVals[3]
+		}
+		id, err := strconv.Atoi(idStr)
 		if err != nil || id < 1 {
-			s.clientError(w, http.StatusNoContent)
+			s.clientError(w, http.StatusBadRequest)
 			return
 		}
 		snippet, err := s.SnippetRepo.GetByID(id)
 		if err != nil {
 			s.Slog.Error(err)
 			if err == models.ERRNoRecordFound {
-				s.clientError(w, http.StatusNoContent)
+				s.clientError(w, http.StatusBadRequest)
 			} else {
 				http.NotFound(w, r)
 			}
@@ -201,10 +214,62 @@ func (s *Server) HandleCreateSnippet() http.HandlerFunc {
 		if !s.isCorrectHttpMethod(req, w, http.MethodPost) {
 			return
 		}
-		_, err := w.Write([]byte("Create a new snippet..."))
+		err := req.ParseForm()
+		if err != nil {
+			s.Slog.Error(err)
+			s.serverError(w, err)
+		}
+		title := req.PostForm.Get("title")
+		content := req.PostForm.Get("content")
+		expiresDays := req.PostForm.Get("expires")
+
+		intExpiresDays, err := strconv.Atoi(expiresDays)
+		if err != nil {
+			s.Slog.Error(err)
+			s.serverError(w, err)
+		}
+		e := make(map[string]string)
+		snippet := &models.Snippet{
+
+			Title:   title,
+			Content: content,
+			Created: time.Now(),
+			Expires: time.Now().Add(time.Hour * time.Duration(24) * time.Duration(intExpiresDays)),
+		}
+		fv := FormVals{
+			Snippet: snippet,
+			Errors:  nil,
+		}
+
+		if strings.TrimSpace(title) == "" {
+			//e = append(e,"Must have title")
+			e["Title"] = "The Snippet must have a title"
+		}
+		if utf8.RuneCountInString(title) > 50 {
+			e["Title"] = "The title can not be more than 100 characters"
+		}
+		if strings.TrimSpace(content) == "" {
+			//e = append(e,"Must have content")
+			e["Content"] = "The Snippet must have content"
+		}
+		if utf8.RuneCountInString(title) > 280 {
+			e["Content"] = "The content can not be more than 280 characters"
+		}
+
+		if len(e) > 0 {
+			fv.Errors = e
+			s.HandleShowSnippetForm(fv).ServeHTTP(w, req)
+
+			return
+		}
+
+		id, err := s.SnippetRepo.Create(snippet)
+
 		if err != nil {
 			log.Fatal(err)
 		}
+		snippet.ID = int(id)
+		http.Redirect(w, req, fmt.Sprintf("/snippet/display/%v", snippet.ID), http.StatusSeeOther)
 	}
 }
 
@@ -214,7 +279,7 @@ func (s *Server) HandleLatestSnippet() http.HandlerFunc {
 		"./ui/html/base.layout.html",
 		"./ui/html/footer.partial.html",
 	}
-	tmpl := s.ParseTemplates(files)
+	tmpl := s.ParseTemplates("show.page.html", files)
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		//w.Header().Set("Content-Type", "application/json")
@@ -251,4 +316,31 @@ func (s *Server) isCorrectHttpMethod(r *http.Request, w http.ResponseWriter, met
 		return false
 	}
 	return true
+}
+
+type FormVals struct {
+	Snippet *models.Snippet
+	Errors  map[string]string
+}
+
+func (s Server) HandleShowSnippetForm(fv FormVals) http.HandlerFunc {
+	files := []string{
+		"./ui/html/create.page.html",
+		"./ui/html/base.layout.html",
+		"./ui/html/footer.partial.html",
+	}
+	tmpl := s.ParseTemplates("create.page.html", files)
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		s.logPathAndMethod(r)
+		//if !s.isCorrectHttpMethod(r, w, http.MethodGet) {
+		//	return
+		//}
+		//data := struct{
+		//	Errors map [string]string
+		//}{
+		//	Errors:errors,
+		//}
+		s.CatchTemplateErrors(tmpl, fv, w)
+	}
 }
