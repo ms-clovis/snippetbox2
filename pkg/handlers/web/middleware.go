@@ -1,7 +1,6 @@
 package web
 
 import (
-	"github.com/gin-gonic/gin"
 	slog "github.com/go-eden/slf4go"
 	"net/http"
 )
@@ -16,10 +15,10 @@ func SecureHeaders(next http.Handler) http.HandlerFunc {
 	}
 }
 
-func RecoverPanic(next http.Handler) gin.HandlerFunc {
-	return func(ctx *gin.Context) {
-		w := ctx.Writer
-		r := ctx.Request
+func RecoverPanic(next http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		//w := ctx.Writer
+		//r := ctx.Request
 		// Create a deferred function (which will always be run in the event
 		// of a panic as Go unwinds the stack).
 		defer func() {
