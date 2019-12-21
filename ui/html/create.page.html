@@ -14,7 +14,7 @@
     {{end}}
     <form action='/snippet/create' method='POST'>
         <div>
-            {{if .Errors}}
+            {{if .Errors.Title}}
                 <label class="error">Title: {{index .Errors "Title"}}</label>
             {{else}}
                 <label>Title:</label>
@@ -23,8 +23,13 @@
             <input type='text' name='title' value="{{.Snippet.Title }}">
         </div>
         <div>
-            <label>Content:</label>
-            <textarea name='content'></textarea>
+            {{ if .Errors.Content}}
+                <label class="error">Content: {{index .Errors "Content"}}</label>
+            {{else}}
+                <label>Content:</label>
+             {{end}}
+                    
+            <textarea name='content'>{{.Snippet.Content}}</textarea>
         </div>
         <div>
             <label>Delete in:</label>

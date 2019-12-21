@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	slog "github.com/go-eden/slf4go"
-	"github.com/ms-clovis/snippetbox/pkg/handlers"
+	"github.com/ms-clovis/snippetbox/pkg/handlers/web"
 	"github.com/ms-clovis/snippetbox/pkg/models"
 	"github.com/ms-clovis/snippetbox/pkg/repository/mysql"
 	"html/template"
@@ -133,7 +133,7 @@ func (s *Server) ParseTemplates(fileName string, files []string) *template.Templ
 	init.Do(func() {
 		s.Slog.Info("Parsed Template(s) first time")
 		//s.Router.SetFuncMap(template.FuncMap{"displayDate":handlers.DisplayDate})
-		tmpl = template.Must(template.New(fileName).Funcs(template.FuncMap{"displayDate": handlers.DisplayDate}).ParseFiles(files...))
+		tmpl = template.Must(template.New(fileName).Funcs(template.FuncMap{"displayDate": web.DisplayDate}).ParseFiles(files...))
 		//tmpl = template.Must(template.ParseFiles(files...))
 	})
 	return tmpl
@@ -252,7 +252,7 @@ func (s *Server) HandleCreateSnippet() http.HandlerFunc {
 			//e = append(e,"Must have content")
 			e["Content"] = "The Snippet must have content"
 		}
-		if utf8.RuneCountInString(title) > 280 {
+		if utf8.RuneCountInString(content) > 280 {
 			e["Content"] = "The content can not be more than 280 characters"
 		}
 
