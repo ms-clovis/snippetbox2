@@ -133,3 +133,7 @@ func (sr *SnippetRepo) Latest() (*models.Snippet, error) {
 	}
 	return snippets[0], nil
 }
+
+func (sr *SnippetRepo) CloseDB() {
+	sr.DB.Close()
+}

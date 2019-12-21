@@ -32,8 +32,10 @@ func main() {
 	//s.Router.SetFuncMap(template.FuncMap{"displayDate":handlers.DisplayDate})
 
 	infoLog.Println("Opening database snippetbox on default port")
+
+	// changed Sever repo to interface (still using pointer to concrete struct instance)
 	s.SetRepo("mysql", *dsn)
-	defer s.SnippetRepo.DB.Close()
+	defer s.SnippetRepo.CloseDB()
 
 	// add custom loggers
 	//s.ErrorLog = errorLog

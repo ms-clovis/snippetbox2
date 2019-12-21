@@ -8,6 +8,7 @@ import (
 	slog "github.com/go-eden/slf4go"
 	"github.com/ms-clovis/snippetbox/pkg/handlers/web"
 	"github.com/ms-clovis/snippetbox/pkg/models"
+	"github.com/ms-clovis/snippetbox/pkg/repository"
 	"github.com/ms-clovis/snippetbox/pkg/repository/mysql"
 	"html/template"
 	"log"
@@ -22,7 +23,7 @@ import (
 
 type Server struct {
 	//Repo   *sql.DB
-	SnippetRepo *mysql.SnippetRepo
+	SnippetRepo repository.Repository
 	Router      *gin.Engine
 	//// logging (for now)
 	//ErrorLog *log.Logger

@@ -10,4 +10,5 @@ type Repository interface {
 	Create(m *models.Snippet) (int64, error)
 	Delete(m *models.Snippet) (bool, error)
 	Update(m *models.Snippet) (bool, error)
+	CloseDB()
 }
