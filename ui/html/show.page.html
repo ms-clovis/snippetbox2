@@ -1,18 +1,23 @@
 {{template "base" .}}
 
-{{define "title"}}Snippet #{{.ID}}{{end}}
+{{define "title"}}Snippet #{{.Snippet.ID}}{{end}}
 
 {{define "main"}}
-    <div class='snippet'>
-        <div class='metadata'>
-            <strong>{{.Title}}</strong>
-            <span>#{{.ID}}</span>
-        </div>
+    {{with .Message}}
+        <div class="flash">{{.}}</div>
+    {{end}}
+    {{with .Snippet}}
+        <div class='snippet'>
+            <div class='metadata'>
+                <strong>{{.Title}}</strong>
+                <span>#{{.ID}}</span>
+            </div>
 
-        <pre><code>{{.Content}}</code></pre>
-        <div class='metadata'>
-            <time>Created: {{.Created | displayDate}}</time>
-            <time>Expires: {{.Expires | displayDate}}</time>
+            <pre><code>{{.Content}}</code></pre>
+            <div class='metadata'>
+                <time>Created: {{.Created | displayDate}}</time>
+                <time>Expires: {{.Expires | displayDate}}</time>
+            </div>
         </div>
-    </div>
+    {{end}}
 {{end}}

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	slog "github.com/go-eden/slf4go"
+	"github.com/golangcollege/sessions"
 	"github.com/ms-clovis/snippetbox/pkg/handlers/web"
 	"github.com/ms-clovis/snippetbox/pkg/models"
 	"github.com/ms-clovis/snippetbox/pkg/repository"
@@ -28,7 +29,8 @@ type Server struct {
 	//// logging (for now)
 	//ErrorLog *log.Logger
 	//InfoLog *log.Logger
-	Slog *slog.Logger
+	Session *sessions.Session
+	Slog    *slog.Logger
 }
 
 func NewServer() *Server {
@@ -160,7 +162,7 @@ func (s *Server) HandleDisplaySnippet() http.HandlerFunc {
 
 		urlStr := r.URL.String()
 		s.Slog.Info(urlStr)
-		var idStr string = "0"
+		var idStr = "0"
 		urlVals := strings.Split(urlStr, "/")
 		if len(urlVals) == 4 {
 			idStr = urlVals[3]
@@ -181,7 +183,17 @@ func (s *Server) HandleDisplaySnippet() http.HandlerFunc {
 			return
 
 		}
-		s.CatchTemplateErrors(tmpl, snippet, w)
+		flash := s.Session.GetString(r, "flash")
+		//fmt.Println(flash)
+		s.Session.Remove(r, "flash")
+		data := struct {
+			Message string
+			Snippet *models.Snippet
+		}{
+			Message: flash,
+			Snippet: snippet,
+		}
+		s.CatchTemplateErrors(tmpl, data, w)
 	}
 }
 
@@ -270,6 +282,7 @@ func (s *Server) HandleCreateSnippet() http.HandlerFunc {
 			log.Fatal(err)
 		}
 		snippet.ID = int(id)
+		s.Session.Put(req, "flash", "Snippet successfully created!")
 		http.Redirect(w, req, fmt.Sprintf("/snippet/display/%v", snippet.ID), http.StatusSeeOther)
 	}
 }
@@ -302,7 +315,17 @@ func (s *Server) HandleLatestSnippet() http.HandlerFunc {
 			return
 
 		}
-		s.CatchTemplateErrors(tmpl, snippet, w)
+		flash := s.Session.GetString(r, "flash")
+		s.Session.Remove(r, "flash")
+		//fmt.Println(flash)
+		data := struct {
+			Message string
+			Snippet *models.Snippet
+		}{
+			Message: flash,
+			Snippet: snippet,
+		}
+		s.CatchTemplateErrors(tmpl, data, w)
 	}
 }
 

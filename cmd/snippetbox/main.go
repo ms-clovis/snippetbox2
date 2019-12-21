@@ -5,16 +5,20 @@ import (
 	"github.com/gin-gonic/gin"
 	slog "github.com/go-eden/slf4go"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/golangcollege/sessions"
 	"github.com/ms-clovis/snippetbox/pkg/infrastructure"
 	"log"
 	"net/http"
 	"os"
+	"time"
 )
 
 func main() {
 	// set and parse flags --addr
 	addr := flag.String("addr", ":8080", "web server's listening address")
 	dsn := flag.String("dsn", "web:password@/snippetbox?parseTime=true", "MySQL data source name")
+	secret := flag.String("secret", "s6Ndh+pPbnzHbS*+9Pk8qGWhTzbpa@ge", "Secret key")
+
 	flag.Parse()
 
 	slog.SetLevel(slog.InfoLevel)
@@ -28,6 +32,14 @@ func main() {
 	s := infrastructure.NewServer()
 	// choose router type
 	s.Router = gin.New()
+
+	// choose session management golangCollege sessions (cookie based)
+	// chosen
+
+	session := sessions.New([]byte(*secret))
+	session.Lifetime = 12 * time.Hour
+
+	s.Session = session
 
 	//s.Router.SetFuncMap(template.FuncMap{"displayDate":handlers.DisplayDate})
 
