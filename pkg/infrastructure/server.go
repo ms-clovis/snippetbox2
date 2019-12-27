@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	slog "github.com/go-eden/slf4go"
 	"github.com/golangcollege/sessions"
+	"github.com/ms-clovis/snippetbox/pkg/handlers/validation"
 	"github.com/ms-clovis/snippetbox/pkg/handlers/web"
 	"github.com/ms-clovis/snippetbox/pkg/models"
 	"github.com/ms-clovis/snippetbox/pkg/repository"
@@ -24,7 +25,9 @@ import (
 
 type Server struct {
 	//Repo   *sql.DB
-	SnippetRepo repository.Repository
+	HttpServer  *http.Server
+	SnippetRepo repository.SnippetRepository
+	UserRepo    repository.UserRepository
 	Router      *gin.Engine
 	//// logging (for now)
 	//ErrorLog *log.Logger
@@ -39,6 +42,10 @@ func NewServer() *Server {
 	s := &Server{}
 	s.Slog = slog.GetLogger()
 	return s
+}
+
+func (s *Server) SetHttpServer(server *http.Server) {
+	s.HttpServer = server
 }
 
 func (s *Server) logPathAndMethod(r *http.Request) {
@@ -82,11 +89,39 @@ func (s *Server) SetRepo(driverName string, dsnString string) {
 	}
 
 	s.SnippetRepo = mysql.NewSnippetRepo(repo)
+	s.UserRepo = mysql.NewUserRepository(repo)
 
 }
 
-func (s *Server) HandleHomePage() http.HandlerFunc {
+func (s *Server) HandleLoginShowForm(data interface{}) http.HandlerFunc {
+	s.Slog.Info("Handle Login Show Form")
+	files := []string{
+		"./ui/html/login.page.html",
+		"./ui/html/base.layout.html",
+		"./ui/html/footer.partial.html",
+	}
+	tmpl := s.ParseTemplates("login.page.html", files)
 
+	return func(w http.ResponseWriter, r *http.Request) {
+		s.logPathAndMethod(r)
+
+		if r.Method != http.MethodGet && r.Method != http.MethodPost {
+			s.clientError(w, http.StatusMethodNotAllowed)
+			return
+		}
+		if r.URL.Path != "/display/login" && r.URL.Path != "/user/login" {
+			s.Slog.Error("Incorrect Path: " + r.URL.Path)
+			http.NotFound(w, r)
+			return
+		}
+
+		s.CatchTemplateErrors(tmpl, data, w)
+
+	}
+}
+
+func (s *Server) HandleHomePage() http.HandlerFunc {
+	s.Slog.Info("Handle Home Page")
 	files := []string{
 		"./ui/html/home.page.html",
 		"./ui/html/base.layout.html",
@@ -97,19 +132,17 @@ func (s *Server) HandleHomePage() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		s.logPathAndMethod(r)
 
-		if !s.isCorrectHttpMethod(r, w, http.MethodGet) {
+		if r.Method != http.MethodGet && r.Method != http.MethodPost {
+			s.Slog.Error("Wrong method: " + r.Method)
+			s.clientError(w, http.StatusMethodNotAllowed)
 			return
 		}
-		if r.URL.Path != "/" && r.URL.Path != "/home" {
-			s.Slog.Error("Incorrect Path: " + r.URL.Path)
-			http.NotFound(w, r)
-			return
-		}
-		if r.Method != http.MethodGet {
-			s.Slog.Error("Incorrect Method: " + r.Method)
-			http.NotFound(w, r)
-			return
-		}
+		//if r.URL.Path != "/" && r.URL.Path != "/home" {
+		//	s.Slog.Error("Incorrect Path: " + r.URL.Path)
+		//	http.NotFound(w, r)
+		//	return
+		//}
+
 		snippets, err := s.SnippetRepo.Fetch(10)
 		if err != nil {
 			s.Slog.Error(err)
@@ -143,7 +176,7 @@ func (s *Server) ParseTemplates(fileName string, files []string) *template.Templ
 }
 
 func (s *Server) HandleDisplaySnippet() http.HandlerFunc {
-
+	s.Slog.Info("Handle Display snippet")
 	files := []string{
 		"./ui/html/show.page.html",
 		"./ui/html/base.layout.html",
@@ -156,9 +189,9 @@ func (s *Server) HandleDisplaySnippet() http.HandlerFunc {
 		// use above for json responses
 
 		s.logPathAndMethod(r)
-		if !s.isCorrectHttpMethod(r, w, http.MethodGet) {
-			return
-		}
+		//if !s.isCorrectHttpMethod(r, w, http.MethodGet) {
+		//	return
+		//}
 
 		urlStr := r.URL.String()
 		s.Slog.Info(urlStr)
@@ -221,6 +254,7 @@ func (s *Server) CatchTemplateErrors(tmpl *template.Template, data interface{}, 
 }
 
 func (s *Server) HandleCreateSnippet() http.HandlerFunc {
+	s.Slog.Info("Handle Create Snippet")
 	return func(w http.ResponseWriter, req *http.Request) {
 
 		s.logPathAndMethod(req)
@@ -288,6 +322,7 @@ func (s *Server) HandleCreateSnippet() http.HandlerFunc {
 }
 
 func (s *Server) HandleLatestSnippet() http.HandlerFunc {
+	s.Slog.Info("Handle Latest Snippet")
 	files := []string{
 		"./ui/html/show.page.html",
 		"./ui/html/base.layout.html",
@@ -331,8 +366,8 @@ func (s *Server) HandleLatestSnippet() http.HandlerFunc {
 
 func (s *Server) isCorrectHttpMethod(r *http.Request, w http.ResponseWriter, method string) bool {
 	if r.Method != method {
-
-		s.Slog.Errorf("Method %v is wrong Http Method", method)
+		s.Slog.Error(r.Method)
+		s.Slog.Errorf("Method %v is wrong Http Method", r.Method)
 		w.Header().Set("Allow", method)
 		//w.WriteHeader(405)
 		//http.Error(w, "Method Not Allowed", 405)
@@ -344,10 +379,12 @@ func (s *Server) isCorrectHttpMethod(r *http.Request, w http.ResponseWriter, met
 
 type FormVals struct {
 	Snippet *models.Snippet
+	User    *models.User
 	Errors  map[string]string
 }
 
 func (s Server) HandleShowSnippetForm(fv FormVals) http.HandlerFunc {
+	s.Slog.Info("Handle show Snippet form")
 	files := []string{
 		"./ui/html/create.page.html",
 		"./ui/html/base.layout.html",
@@ -367,4 +404,120 @@ func (s Server) HandleShowSnippetForm(fv FormVals) http.HandlerFunc {
 		//}
 		s.CatchTemplateErrors(tmpl, fv, w)
 	}
+}
+
+func (s *Server) HandleLoginRegistration() http.HandlerFunc {
+	s.Slog.Info("Handle Login registration")
+	return func(w http.ResponseWriter, r *http.Request) {
+		s.logPathAndMethod(r)
+		s.isCorrectHttpMethod(r, w, http.MethodPost)
+		err := r.ParseForm()
+		if err != nil {
+			slog.Error(err)
+			s.serverError(w, err)
+		}
+
+		emailName := r.PostFormValue("Name")
+		s.Slog.Info(emailName)
+		password := r.PostFormValue("Password")
+		//s.Slog.Info(password)
+		errs := make(map[string]string)
+		if validation.IsBlank(emailName) {
+			errs["Name"] = models.ERRMustHaveName.Error()
+		}
+		if !validation.IsValidEmailAddr(emailName) {
+			errs["Name"] = models.ERRMustBeValidEmailAddress.Error()
+		}
+		if validation.IsBlank(password) {
+			errs["Password"] = models.ERRMustHavePassword.Error()
+		}
+		if validation.IsLessThanChars(password, 6) {
+			errs["Password"] = fmt.Sprintf("Password Must Have %v Characters", 6)
+		}
+
+		if len(errs) > 0 {
+			user := &models.User{Name: emailName, Password: password}
+			data := struct {
+				Errors map[string]string
+				User   *models.User
+			}{
+				Errors: errs,
+				User:   user,
+			}
+			w.WriteHeader(http.StatusSeeOther)
+			s.HandleLoginShowForm(data).ServeHTTP(w, r)
+			return
+		}
+		user, err := s.UserRepo.GetUser(emailName)
+		if err != nil && err != models.ERRNoUserFound {
+			s.serverError(w, err)
+			return
+		}
+
+		if user == nil {
+			// create user
+
+			u := &models.User{
+
+				Name: emailName,
+
+				Active: true,
+			}
+			u.SetEncryptedPassword(password)
+			_, err = s.UserRepo.Create(u)
+			if err != nil {
+				s.serverError(w, err)
+			}
+			setSessionIDCookie(w, u.Password)
+
+			//s.HandleHomePage().ServeHTTP(w, r)
+			http.Redirect(w, r, "/", http.StatusSeeOther)
+			return
+		}
+		// check to see if logged In
+
+		isAuth, err := s.UserRepo.IsAuthenticated(user)
+		if err != nil && err != models.ERRNoRecordFound {
+			s.serverError(w, err)
+			return
+		}
+
+		if !isAuth {
+			// change error map
+			for k := range errs {
+				delete(errs, k)
+			}
+			errs["Password"] = "Your UserName / Password is incorrect"
+			user := &models.User{Name: emailName, Password: password}
+			data := struct {
+				Errors map[string]string
+				User   *models.User
+			}{
+				Errors: errs,
+				User:   user,
+			}
+			w.WriteHeader(http.StatusSeeOther)
+			s.HandleLoginShowForm(data).ServeHTTP(w, r)
+			return
+		}
+
+		// redirect to / with message
+		setSessionIDCookie(w, user.Password)
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+
+	}
+
+}
+
+func setSessionIDCookie(w http.ResponseWriter, hashedPW string) {
+	// need to create and store sessionid
+	cookie := http.Cookie{
+		Name:    "sessionid",
+		Value:   hashedPW,
+		Path:    "/",
+		Expires: time.Now().Add(time.Hour),
+	}
+	http.SetCookie(w, &cookie)
+
 }

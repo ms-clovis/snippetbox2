@@ -11,8 +11,11 @@ func IsBlank(s string) bool {
 	return strings.TrimSpace(s) == ""
 }
 
-func IsLessThanMaxChars(s string, maxChars int) bool {
-	return utf8.RuneCountInString(s) <= maxChars
+func IsLessThanChars(s string, numberOfChars int) bool {
+	return utf8.RuneCountInString(s) < numberOfChars
+}
+func IsMoreThanChars(s string, maxChars int) bool {
+	return utf8.RuneCountInString(s) > maxChars
 }
 
 func DoesStartWith(s string, beginning string) bool {

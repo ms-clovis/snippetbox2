@@ -13,18 +13,19 @@ import (
 
 func TestServer_HandleHome(t *testing.T) {
 	s, mock := setUpServerTesting(t)
-	defer s.SnippetRepo.DB.Close()
+	defer s.SnippetRepo.CloseDB()
 	snippet := &models.Snippet{
 		ID:      1,
 		Title:   "Test snippet",
 		Content: "I am a test snippet",
 		Created: time.Now(),
 		Expires: time.Now().Add(time.Hour),
+		Author:  "bar@test.com",
 	}
 
-	rows := mock.NewRows([]string{"id", "title", "content", "created", "expired"}).
+	rows := mock.NewRows([]string{"id", "title", "content", "created", "expired", "author"}).
 		AddRow(snippet.ID, snippet.Title,
-			snippet.Content, snippet.Created, snippet.Expires)
+			snippet.Content, snippet.Created, snippet.Expires, snippet.Author)
 	mock.ExpectQuery("SELECT").
 		WillReturnRows(rows)
 
@@ -32,7 +33,7 @@ func TestServer_HandleHome(t *testing.T) {
 
 	ts := httptest.NewServer(h)
 	defer ts.Close()
-	req := httptest.NewRequest("Get", "/home", nil)
+	req := httptest.NewRequest(http.MethodGet, "/home", nil)
 
 	resp := httptest.NewRecorder()
 	h.ServeHTTP(resp, req)
@@ -46,7 +47,7 @@ func TestServer_HandleHome(t *testing.T) {
 
 func TestServer_WrongMethod(t *testing.T) {
 	s, _ := setUpServerTesting(t)
-	defer s.SnippetRepo.DB.Close()
+	defer s.SnippetRepo.CloseDB()
 
 	h := s.HandleCreateSnippet()
 	ts := httptest.NewServer(h)
@@ -54,15 +55,15 @@ func TestServer_WrongMethod(t *testing.T) {
 
 	// body will eventually be snippet values !!!!!
 
-	req := httptest.NewRequest("PUT", "/snippet/create", nil)
+	req := httptest.NewRequest(http.MethodPut, "/snippet/create", nil)
 
 	resp := httptest.NewRecorder()
 	h.ServeHTTP(resp, req)
 	if resp.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("expected status code to be 405, but got: %d", resp.Code)
 	}
-	fmt.Println("__________________")
-	fmt.Println(resp.Body)
+	//fmt.Println("__________________")
+	//fmt.Println(resp.Body)
 
 	//req := httptest.NewRequest("POST", "/snippet/create", nil)
 }
@@ -87,7 +88,7 @@ func TestServer_HandleCreateSnippet(t *testing.T) {
 	//	//
 	//	//s.SnippetRepo = mysql.NewSnippetRepo(db)
 	s, mock := setUpServerTesting(t)
-	defer s.SnippetRepo.DB.Close()
+	defer s.SnippetRepo.CloseDB()
 
 	snippet := &models.Snippet{
 		ID:      1,

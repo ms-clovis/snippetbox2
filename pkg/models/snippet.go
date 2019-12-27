@@ -14,6 +14,10 @@ type Snippet struct {
 	Author  string    `json:"author"`
 }
 
+func (s *Snippet) IsModel() bool {
+	return true
+}
+
 func NewEmptySnippet() *Snippet {
 	return &Snippet{}
 }

@@ -1,0 +1,39 @@
+{{template "base" .}}
+
+{{define "title"}}Register / Login User{{end}}
+
+{{define "main"}}
+    {{if .Errors}}
+        <h4 class="error">Errors in Form:</h4>
+        <ul>
+            {{range .Errors}}
+                <li>{{.}}</li>
+            {{end}}
+        </ul>
+        <br>
+    {{end}}
+    <form action='/user/login' method='POST'>
+        <div>
+            {{if .Errors.Name}}
+                <label class="error">Name: {{index .Errors "Name"}}</label>
+            {{else}}
+                <label>Name:</label>
+            {{end}}
+
+            <input type='text' name='Name' value="{{.User.Name }}">
+        </div>
+        <div>
+            {{ if .Errors.Password}}
+                <label class="error" for="Password" >Password: {{index .Errors "Password"}}</label>
+            {{else}}
+                <label>Password:</label>
+            {{end}}
+            <input type="password" name="Password">
+
+        </div>
+
+        <div>
+            <input type='submit' value='Register/Login'>
+        </div>
+    </form>
+{{end}}

@@ -47,7 +47,7 @@ func TestSnippetRepo_Delete(t *testing.T) {
 		t.Fatal(err)
 	}
 	sr := NewSnippetRepo(db)
-	defer sr.DB.Close()
+	defer sr.CloseDB()
 	mock.ExpectExec("DELETE").
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	snippet := &models.Snippet{
@@ -86,10 +86,11 @@ func TestSnippetRepo_GetByID(t *testing.T) {
 		Content: "I am a test snippet",
 		Created: time.Now(),
 		Expires: time.Now().Add(time.Hour),
+		Author:  "bar@test.com",
 	}
 
-	rows := sqlmock.NewRows([]string{"id", "title", "content", "created", "expires"}).
-		AddRow(snippet.ID, snippet.Title, snippet.Content, snippet.Created, snippet.Expires)
+	rows := sqlmock.NewRows([]string{"id", "title", "content", "created", "expires", "author"}).
+		AddRow(snippet.ID, snippet.Title, snippet.Content, snippet.Created, snippet.Expires, snippet.Author)
 	mock.ExpectQuery("SELECT").WithArgs(1).
 		WillReturnRows(rows)
 	s, err := sr.GetByID(snippet.ID)

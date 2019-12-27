@@ -9,18 +9,29 @@ import (
 )
 
 func (s Server) Routes() {
+	// to use alice must be HANDLERS , not HANDLDERFUNCS, see recoverPanic
+	//sessionMiddleWare := alice.New(s.Session.Enable,web.RecoverPanic)
+	data := struct {
+		User   models.User
+		Errors map[string]string
+	}{User: models.User{},
+		Errors: nil,
+	}
+	//s.Router.Handle(http.MethodGet,"/foo",gin.WrapH(sessionMiddleWare.Then(s.HandleHomePage())))
+	s.Router.Handle(http.MethodPost, "/user/login", gin.WrapH(s.Session.Enable(web.RecoverPanic(web.SecureHeaders(s.HandleLoginRegistration())))))
 
-	//sessionMiddleWare := alice.New(s.Session.Enable)
+	s.Router.Handle(http.MethodGet, "/display/login", gin.WrapH(s.Session.Enable(web.RecoverPanic(web.SecureHeaders(s.HandleLoginShowForm(data))))))
 
-	s.Router.Handle(http.MethodGet, "/", gin.WrapH(s.Session.Enable(web.RecoverPanic(web.SecureHeaders(s.HandleHomePage())))))
-	s.Router.Handle(http.MethodGet, "/snippet/display/:id", gin.WrapH(s.Session.Enable(web.RecoverPanic(web.SecureHeaders(s.HandleDisplaySnippet())))))
-	s.Router.Handle(http.MethodPost, "/snippet/create", gin.WrapH(s.Session.Enable(web.RecoverPanic(web.SecureHeaders(s.HandleCreateSnippet())))))
-	s.Router.Handle(http.MethodGet, "/snippet/create", gin.WrapH(s.Session.Enable(web.RecoverPanic(web.SecureHeaders(s.HandleShowSnippetForm(FormVals{Snippet: models.NewEmptySnippet()}))))))
-	s.Router.Handle(http.MethodGet, "/latest", gin.WrapH(s.Session.Enable(web.RecoverPanic(web.SecureHeaders(s.HandleLatestSnippet())))))
+	s.Router.Handle(http.MethodGet, "/", gin.WrapH(s.Session.Enable(web.RecoverPanic(web.SecureHeaders(web.LoginForNoSession(s.HandleHomePage()))))))
+	s.Router.Handle(http.MethodGet, "/snippet/display/:id", gin.WrapH(s.Session.Enable(web.RecoverPanic(web.SecureHeaders(web.LoginForNoSession(s.HandleDisplaySnippet()))))))
+	s.Router.Handle(http.MethodPost, "/snippet/create", gin.WrapH(s.Session.Enable(web.RecoverPanic(web.SecureHeaders(web.LoginForNoSession(s.HandleCreateSnippet()))))))
+	s.Router.Handle(http.MethodGet, "/snippet/create", gin.WrapH(s.Session.Enable(web.RecoverPanic(web.SecureHeaders(web.LoginForNoSession(s.HandleShowSnippetForm(FormVals{Snippet: models.NewEmptySnippet()})))))))
+	s.Router.Handle(http.MethodGet, "/latest", gin.WrapH(s.Session.Enable(web.RecoverPanic(web.SecureHeaders(web.LoginForNoSession(s.HandleLatestSnippet()))))))
 
 	// strip prefix LOOKS ONLY for paths that begin with the prefix and then use the FileServer (in this case)
 	// handler. The File Server is looking for paths (after the "stripping" of the prefix) and adding them to
 	// the directory on the hard drive listed
 
-	s.Router.Handle(http.MethodGet, "/static/", gin.WrapH(http.StripPrefix("/static", http.FileServer(http.Dir("./ui/static/")))))
+	//s.Router.Handle(http.MethodGet, "/static/", gin.WrapH(http.StripPrefix("/static/", http.FileServer(http.Dir("./ui/static/")))))
+	s.Router.Static("/static/", "./ui/static")
 }

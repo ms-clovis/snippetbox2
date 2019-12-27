@@ -2,12 +2,12 @@ package mysql
 
 import (
 	"database/sql"
+	slog "github.com/go-eden/slf4go"
 	"github.com/ms-clovis/snippetbox/pkg/models"
 )
 
 type SnippetRepo struct {
 	DB *sql.DB
-	//FetchPS * sql.Stmt
 }
 
 func NewSnippetRepo(db *sql.DB) *SnippetRepo {
@@ -24,7 +24,7 @@ func (sr *SnippetRepo) fetch(query string, arg int) ([]*models.Snippet, error) {
 
 	defer rows.Close()
 	if err != nil {
-		//fudge think this through
+		slog.Error(err)
 
 		return nil, err
 	}
@@ -57,7 +57,7 @@ func (sr *SnippetRepo) FetchAll() ([]*models.Snippet, error) {
 
 func (sr *SnippetRepo) Fetch(numberToFetch int) ([]*models.Snippet, error) {
 
-	query := "SELECT s.id, s.title, s.content, s.created, s.expires,u.name " +
+	query := "SELECT s.id, s.title, s.content, s.created, s.expires, u.name " +
 		"FROM snippets s INNER JOIN users u ON s.author = u.id WHERE s.expires > UTC_TIMESTAMP() " +
 		"ORDER BY created DESC "
 
@@ -81,9 +81,9 @@ func (sr *SnippetRepo) Delete(m *models.Snippet) (bool, error) {
 }
 
 func (sr *SnippetRepo) GetByID(ID int) (*models.Snippet, error) {
-	query := "SELECT s.id, s.title, s.content, s.created, s.expires,u.name " +
+	query := "SELECT s.id, s.title, s.content, s.created, s.expires, u.name " +
 		"FROM snippets s INNER JOIN users u ON s.author = u.id WHERE s.expires > UTC_TIMESTAMP() " +
-		"AND s.id = ? "
+		"AND s.id = ? LIMIT 1 "
 	snippets, err := sr.fetch(query, ID)
 	if err != nil {
 

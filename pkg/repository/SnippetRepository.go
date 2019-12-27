@@ -2,7 +2,7 @@ package repository
 
 import "github.com/ms-clovis/snippetbox/pkg/models"
 
-type Repository interface {
+type SnippetRepository interface {
 	Fetch(numberToFetch int) ([]*models.Snippet, error)
 	FetchAll() ([]*models.Snippet, error)
 	GetByID(ID int) (*models.Snippet, error)

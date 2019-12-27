@@ -33,6 +33,16 @@ func main() {
 	// choose router type
 	s.Router = gin.New()
 
+	httpServer := &http.Server{
+		Addr:         *addr,
+		Handler:      s.Router,
+		TLSConfig:    nil,
+		IdleTimeout:  time.Minute,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+	}
+	s.SetHttpServer(httpServer)
+
 	// choose session management golangCollege sessions (cookie based)
 	// chosen
 
@@ -55,7 +65,8 @@ func main() {
 	s.Routes()
 
 	infoLog.Println("Starting server on ", *addr)
-	err := http.ListenAndServe(*addr, s.Router)
+	//err := http.ListenAndServe(*addr, s.Router)
+	err := s.HttpServer.ListenAndServe()
 	if err != nil {
 		errorLog.Fatal(err)
 	}

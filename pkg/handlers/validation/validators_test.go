@@ -37,13 +37,13 @@ func TestIsBlank(t *testing.T) {
 	}
 }
 
-func TestIsLessThanMaxChars(t *testing.T) {
+func TestIsLessThanChars(t *testing.T) {
 	str := "12345"
-	if !IsLessThanMaxChars(str, 6) {
+	if !IsLessThanChars(str, 6) {
 		t.Error("String is less than max")
 	}
 
-	if IsLessThanMaxChars(str, 4) {
+	if IsLessThanChars(str, 4) {
 		t.Error("String is not less than max")
 	}
 }
