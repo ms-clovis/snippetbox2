@@ -7,32 +7,31 @@ import (
 )
 
 func TestUserRepository_IsAuthenticated(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Error(err)
-	}
-	ur := NewUserRepository(db)
-	defer ur.CloseDB()
-
+	password := "123456"
+	alphaPW := "abcdef"
 	user := &models.User{
 		ID:       1,
 		Name:     "foo@test.com",
-		Password: "123456",
+		Password: password,
 		Active:   true,
 	}
 	//pw ,_ := bcrypt.GenerateFromPassword([]byte(user.Password),bcrypt.DefaultCost)
-	user.SetEncryptedPassword(user.Password)
-	rows := sqlmock.NewRows([]string{"id", "name", "password", "active"}).
-		AddRow(user.ID, user.Name, user.Password, user.Active)
+	user.SetEncryptedPassword(password)
+	ur := UserRepository{}
 
-	mock.ExpectQuery("SELECT").WithArgs(user.Name, user.Password).
-		WillReturnRows(rows)
-
-	isAuth, err := ur.IsAuthenticated(user)
+	isAuth, err := ur.IsAuthenticated(user.Password, password)
 	if err != nil {
 		t.Error(err)
 	}
 	if !isAuth {
+		t.Error("Did not authenticate")
+	}
+	user.SetEncryptedPassword(alphaPW)
+	isAuth, err = ur.IsAuthenticated(user.Password, password)
+	if err == nil {
+		t.Error(err)
+	}
+	if isAuth {
 		t.Error("Did not authenticate")
 	}
 }
