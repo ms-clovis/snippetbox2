@@ -38,7 +38,9 @@ func (ur *UserRepository) Create(u *models.User) (int64, error) {
 func (ur *UserRepository) fetchByID(query string, id int) (*models.User, error) {
 	rows, err := ur.DB.Query(query, id)
 	//noinspection ALL
-	defer rows.Close()
+	if rows != nil {
+		defer rows.Close()
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +61,9 @@ func (ur *UserRepository) fetchByID(query string, id int) (*models.User, error) 
 
 func (ur *UserRepository) fetch(query string, arg string) (*models.User, error) {
 	rows, err := ur.DB.Query(query, arg)
-	defer rows.Close()
+	if rows != nil {
+		defer rows.Close()
+	}
 	if err != nil {
 		return nil, err
 	}
