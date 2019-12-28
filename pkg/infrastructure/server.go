@@ -457,18 +457,7 @@ func (s *Server) HandleLoginRegistration() http.HandlerFunc {
 		if user == nil {
 			// create user
 
-			u := &models.User{
-
-				Name: emailName,
-
-				Active: true,
-			}
-			u.SetEncryptedPassword(password)
-			_, err = s.UserRepo.Create(u)
-			if err != nil {
-				s.serverError(w, err)
-			}
-			setSessionIDCookie(w, u.Password)
+			s.HandleCreateUser(emailName, password, w)
 
 			//s.HandleHomePage().ServeHTTP(w, r)
 			http.Redirect(w, r, "/", http.StatusSeeOther)
@@ -476,18 +465,14 @@ func (s *Server) HandleLoginRegistration() http.HandlerFunc {
 		}
 		// check to see if logged In
 
-		isAuth, err := s.UserRepo.IsAuthenticated(user)
-		if err != nil && err != models.ERRNoRecordFound {
-			s.serverError(w, err)
-			return
-		}
+		isAuth := s.UserRepo.IsAuthenticated(user.Password, password)
 
 		if !isAuth {
 			// change error map
 			for k := range errs {
 				delete(errs, k)
 			}
-			errs["Password"] = "Your UserName / Password is incorrect"
+			errs["General"] = "Your UserName / Password is incorrect"
 			user := &models.User{Name: emailName, Password: password}
 			data := struct {
 				Errors map[string]string
@@ -507,6 +492,22 @@ func (s *Server) HandleLoginRegistration() http.HandlerFunc {
 		return
 
 	}
+
+}
+
+func (s *Server) HandleCreateUser(emailName string, password string, w http.ResponseWriter) {
+	u := &models.User{
+
+		Name: emailName,
+
+		Active: true,
+	}
+	u.SetEncryptedPassword(password)
+	_, err := s.UserRepo.Create(u)
+	if err != nil {
+		s.serverError(w, err)
+	}
+	setSessionIDCookie(w, u.Password)
 
 }
 

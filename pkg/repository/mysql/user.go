@@ -37,6 +37,7 @@ func (ur *UserRepository) Create(u *models.User) (int64, error) {
 
 func (ur *UserRepository) fetchByID(query string, id int) (*models.User, error) {
 	rows, err := ur.DB.Query(query, id)
+	//noinspection ALL
 	defer rows.Close()
 	if err != nil {
 		return nil, err
@@ -89,12 +90,12 @@ func (ur *UserRepository) GetUserByID(id int) (*models.User, error) {
 	return ur.fetchByID(query, id)
 }
 
-func (ur *UserRepository) IsAuthenticated(hashedPW string, pw string) (bool, error) {
+func (ur *UserRepository) IsAuthenticated(hashedPW string, pw string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(hashedPW), []byte(pw))
 	if err != nil {
-		return false, err
+		return false
 	}
-	return true, nil
+	return true
 	//query := "SELECT id, name, password,active FROM users " +
 	//	"WHERE name = ? AND password = ? AND active = TRUE LIMIT 1"
 	//
