@@ -19,18 +19,14 @@ func TestUserRepository_IsAuthenticated(t *testing.T) {
 	user.SetEncryptedPassword(password)
 	ur := UserRepository{}
 
-	isAuth, err := ur.IsAuthenticated(user.Password, password)
-	if err != nil {
-		t.Error(err)
-	}
+	isAuth := ur.IsAuthenticated(user.Password, password)
+
 	if !isAuth {
 		t.Error("Did not authenticate")
 	}
 	user.SetEncryptedPassword(alphaPW)
-	isAuth, err = ur.IsAuthenticated(user.Password, password)
-	if err == nil {
-		t.Error(err)
-	}
+	isAuth = ur.IsAuthenticated(user.Password, password)
+
 	if isAuth {
 		t.Error("Did not authenticate")
 	}

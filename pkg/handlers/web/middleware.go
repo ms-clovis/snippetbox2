@@ -7,34 +7,15 @@ import (
 	"runtime/debug"
 )
 
-func LoginForNoSession(next http.Handler) http.HandlerFunc {
-	//var init sync.Once
-	//
-	//init.Do(func(){
-	//
-	//})
-	return func(w http.ResponseWriter, r *http.Request) {
-
-		sessionID, err := r.Cookie("sessionid")
-
-		if sessionID == nil || err != nil {
-			http.Redirect(w, r, "/display/login", http.StatusSeeOther)
-
-			return
-		}
-		next.ServeHTTP(w, r)
-	}
-}
-
-func SecureHeaders(next http.Handler) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func SecureHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		//slog.Info("Setting secure headers")
 		w.Header().Set("X-XSS-Protection", "1; mode=block")
 		w.Header().Set("X-Frame-Options", "deny")
 		if next != nil {
 			next.ServeHTTP(w, r)
 		}
-	}
+	})
 }
 
 func RecoverPanic(next http.Handler) http.Handler {

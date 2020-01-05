@@ -20,7 +20,12 @@
             <a href='/'>Home</a>
             <a href="/latest">Latest</a>
             <a href="/snippet/create">Create a Snippets</a>
-        </nav>
+            {{if .IsAuthenticated}}
+                <a href="/user/logout">{{.User.Name}} Logout</a>
+            {{else}}
+                <a href="/display/login">Login/Register</a>
+            {{end}}
+        </nav>r
         <main>
             {{template "main" .}}
         </main>

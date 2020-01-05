@@ -3,6 +3,11 @@
 {{define "title"}}Home{{end}}
 
 {{define "main"}}
+    {{if .Message}}
+        <h3>{{.Message}}</h3>
+        <br>
+        <br>
+    {{end}}
     <h2>Latest Snippets</h2>
         {{if .Snippets}}
             <table>

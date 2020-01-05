@@ -7,6 +7,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/golangcollege/sessions"
 	"github.com/ms-clovis/snippetbox/pkg/infrastructure"
+	"github.com/ms-clovis/snippetbox/pkg/models"
 	"log"
 	"net/http"
 	"os"
@@ -32,7 +33,7 @@ func main() {
 	s := infrastructure.NewServer()
 	// choose router type
 	s.Router = gin.New()
-
+	s.SessionMap = make(map[string]*models.User)
 	httpServer := &http.Server{
 		Addr:         *addr,
 		Handler:      s.Router,

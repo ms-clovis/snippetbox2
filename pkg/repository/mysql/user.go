@@ -90,7 +90,7 @@ func (ur *UserRepository) GetUser(name string) (*models.User, error) {
 
 func (ur *UserRepository) GetUserByID(id int) (*models.User, error) {
 	query := "SELECT id, name, password,active FROM users " +
-		"WHERE id = ? LIMIT 1"
+		"WHERE id = ? AND active = TRUE LIMIT 1"
 	return ur.fetchByID(query, id)
 }
 

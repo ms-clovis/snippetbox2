@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	slog "github.com/go-eden/slf4go"
 	"github.com/golangcollege/sessions"
+	"github.com/justinas/nosurf"
 	"github.com/ms-clovis/snippetbox/pkg/handlers/validation"
 	"github.com/ms-clovis/snippetbox/pkg/handlers/web"
 	"github.com/ms-clovis/snippetbox/pkg/models"
@@ -32,14 +33,33 @@ type Server struct {
 	//// logging (for now)
 	//ErrorLog *log.Logger
 	//InfoLog *log.Logger
-	Session *sessions.Session
-	Slog    *slog.Logger
+	Session    *sessions.Session
+	SessionMap map[string]*models.User
+	Slog       *slog.Logger
+}
+
+func checkSessionMapForExpiredSessions() {
+	// not ready for this yet
 }
 
 func NewServer() *Server {
 	slog.Debug("Should not see this")
 
 	s := &Server{}
+	ticker := time.NewTicker(time.Hour)
+	done := make(chan bool)
+	go func() {
+		for {
+			select {
+			case <-done:
+				return
+			case <-ticker.C:
+				// check for expired user sessions
+				checkSessionMapForExpiredSessions()
+
+			}
+		}
+	}()
 	s.Slog = slog.GetLogger()
 	return s
 }
@@ -93,7 +113,7 @@ func (s *Server) SetRepo(driverName string, dsnString string) {
 
 }
 
-func (s *Server) HandleLoginShowForm(data interface{}) http.HandlerFunc {
+func (s *Server) HandleLoginShowForm(data *web.DataVals) http.HandlerFunc {
 	s.Slog.Info("Handle Login Show Form")
 	files := []string{
 		"./ui/html/login.page.html",
@@ -103,6 +123,9 @@ func (s *Server) HandleLoginShowForm(data interface{}) http.HandlerFunc {
 	tmpl := s.ParseTemplates("login.page.html", files)
 
 	return func(w http.ResponseWriter, r *http.Request) {
+		if data == nil || data.User.ID == 0 {
+			data = s.getDefaultDataVals(data, r)
+		}
 		s.logPathAndMethod(r)
 
 		if r.Method != http.MethodGet && r.Method != http.MethodPost {
@@ -114,14 +137,16 @@ func (s *Server) HandleLoginShowForm(data interface{}) http.HandlerFunc {
 			http.NotFound(w, r)
 			return
 		}
+		s.RemoveSessionInfo(r, w)
 
 		s.CatchTemplateErrors(tmpl, data, w)
 
 	}
 }
 
-func (s *Server) HandleHomePage() http.HandlerFunc {
+func (s *Server) HandleHomePage(data *web.DataVals) http.HandlerFunc {
 	s.Slog.Info("Handle Home Page")
+
 	files := []string{
 		"./ui/html/home.page.html",
 		"./ui/html/base.layout.html",
@@ -130,6 +155,10 @@ func (s *Server) HandleHomePage() http.HandlerFunc {
 	tmpl := s.ParseTemplates("home.page.html", files)
 
 	return func(w http.ResponseWriter, r *http.Request) {
+		if data == nil || data.User.ID == 0 {
+			data = s.getDefaultDataVals(data, r)
+		}
+
 		s.logPathAndMethod(r)
 
 		if r.Method != http.MethodGet && r.Method != http.MethodPost {
@@ -149,13 +178,9 @@ func (s *Server) HandleHomePage() http.HandlerFunc {
 			http.NotFound(w, r)
 			return
 		}
-		data := struct {
-			Title    string
-			Snippets []*models.Snippet
-		}{
-			Title:    "Home",
-			Snippets: snippets,
-		}
+
+		data.Snippets = snippets
+		data.Title = "Home"
 
 		s.CatchTemplateErrors(tmpl, data, w)
 	}
@@ -219,13 +244,13 @@ func (s *Server) HandleDisplaySnippet() http.HandlerFunc {
 		flash := s.Session.GetString(r, "flash")
 		//fmt.Println(flash)
 		s.Session.Remove(r, "flash")
-		data := struct {
-			Message string
-			Snippet *models.Snippet
-		}{
+
+		data := &web.DataVals{
 			Message: flash,
 			Snippet: snippet,
+			Title:   "Newest Snippet",
 		}
+		s.getDefaultDataVals(data, r)
 		s.CatchTemplateErrors(tmpl, data, w)
 	}
 }
@@ -261,6 +286,7 @@ func (s *Server) HandleCreateSnippet() http.HandlerFunc {
 		if !s.isCorrectHttpMethod(req, w, http.MethodPost) {
 			return
 		}
+
 		err := req.ParseForm()
 		if err != nil {
 			s.Slog.Error(err)
@@ -283,11 +309,10 @@ func (s *Server) HandleCreateSnippet() http.HandlerFunc {
 			Created: time.Now(),
 			Expires: time.Now().Add(time.Hour * time.Duration(24) * time.Duration(intExpiresDays)),
 		}
-		fv := FormVals{
-			Snippet: snippet,
-			Errors:  nil,
-		}
 
+		//get user from map
+
+		data := s.getDefaultDataVals(nil, req)
 		if strings.TrimSpace(title) == "" {
 			//e = append(e,"Must have title")
 			e["Title"] = "The Snippet must have a title"
@@ -304,8 +329,12 @@ func (s *Server) HandleCreateSnippet() http.HandlerFunc {
 		}
 
 		if len(e) > 0 {
-			fv.Errors = e
-			s.HandleShowSnippetForm(fv).ServeHTTP(w, req)
+			data.Errors = e
+			data.Title = "Create Snippet"
+			data.Snippet = models.NewEmptySnippet()
+			data.Snippet.Title = title
+			data.Snippet.Content = content
+			s.HandleShowSnippetForm(data).ServeHTTP(w, req)
 
 			return
 		}
@@ -352,14 +381,13 @@ func (s *Server) HandleLatestSnippet() http.HandlerFunc {
 		}
 		flash := s.Session.GetString(r, "flash")
 		s.Session.Remove(r, "flash")
-		//fmt.Println(flash)
-		data := struct {
-			Message string
-			Snippet *models.Snippet
-		}{
+
+		data := &web.DataVals{
+			Title:   "Lastest Snippet",
 			Message: flash,
 			Snippet: snippet,
 		}
+		data = s.getDefaultDataVals(data, r)
 		s.CatchTemplateErrors(tmpl, data, w)
 	}
 }
@@ -383,8 +411,30 @@ type FormVals struct {
 	Errors  map[string]string
 }
 
-func (s Server) HandleShowSnippetForm(fv FormVals) http.HandlerFunc {
+func (s Server) getDefaultDataVals(dv *web.DataVals, r *http.Request) *web.DataVals {
+	if dv == nil {
+		dv = &web.DataVals{}
+	}
+	sessionID, err := r.Cookie("sessionid")
+	if err != nil {
+		sessionID = &http.Cookie{Value: "none"}
+	}
+	user, ok := s.SessionMap[sessionID.Value]
+	if !ok {
+		user = &models.User{}
+	}
+
+	dv.User = user
+	dv.IsAuthenticated = user.Active
+	dv.CurrentYear = time.Now().Year()
+	dv.CSRFToken = nosurf.Token(r)
+
+	return dv
+}
+
+func (s Server) HandleShowSnippetForm(data *web.DataVals) http.HandlerFunc {
 	s.Slog.Info("Handle show Snippet form")
+
 	files := []string{
 		"./ui/html/create.page.html",
 		"./ui/html/base.layout.html",
@@ -397,12 +447,9 @@ func (s Server) HandleShowSnippetForm(fv FormVals) http.HandlerFunc {
 		//if !s.isCorrectHttpMethod(r, w, http.MethodGet) {
 		//	return
 		//}
-		//data := struct{
-		//	Errors map [string]string
-		//}{
-		//	Errors:errors,
-		//}
-		s.CatchTemplateErrors(tmpl, fv, w)
+		data = s.getDefaultDataVals(data, r)
+
+		s.CatchTemplateErrors(tmpl, data, w)
 	}
 }
 
@@ -437,13 +484,16 @@ func (s *Server) HandleLoginRegistration() http.HandlerFunc {
 
 		if len(errs) > 0 {
 			user := &models.User{Name: emailName, Password: password}
-			data := struct {
-				Errors map[string]string
-				User   *models.User
-			}{
-				Errors: errs,
-				User:   user,
-			}
+
+			data := s.getDefaultDataVals(nil, r)
+			//data := &web.DataVals{
+			//	Title:"Login - Registration",
+			//	Errors:errs,
+			//	User:user,
+			//}
+			data.Title = "Login - Registration"
+			data.Errors = errs
+			data.User = user
 			w.WriteHeader(http.StatusSeeOther)
 			s.HandleLoginShowForm(data).ServeHTTP(w, r)
 			return
@@ -457,9 +507,9 @@ func (s *Server) HandleLoginRegistration() http.HandlerFunc {
 		if user == nil {
 			// create user
 
-			s.HandleCreateUser(emailName, password, w)
+			user = s.CreateUser(emailName, password, w)
+			s.SessionMap[user.Password] = user
 
-			//s.HandleHomePage().ServeHTTP(w, r)
 			http.Redirect(w, r, "/", http.StatusSeeOther)
 			return
 		}
@@ -473,29 +523,49 @@ func (s *Server) HandleLoginRegistration() http.HandlerFunc {
 				delete(errs, k)
 			}
 			errs["General"] = "Your UserName / Password is incorrect"
-			user := &models.User{Name: emailName, Password: password}
-			data := struct {
-				Errors map[string]string
-				User   *models.User
-			}{
-				Errors: errs,
-				User:   user,
-			}
+
+			//sessionID, err := r.Cookie("sessionid")
+			//if err != nil {
+			//	sessionID = &http.Cookie{Value:"none"}
+			//}
+			//u,ok := s.SessionMap[sessionID.Value]
+			//if ok{
+			//	// use user in sessionMap
+			//	user = u
+			//}
+			//otherwise use user from database
+			data := s.getDefaultDataVals(nil, r)
+
+			data.User = user
+			data.Errors = errs
+			data.Title = "Login - Registration"
+
 			w.WriteHeader(http.StatusSeeOther)
 			s.HandleLoginShowForm(data).ServeHTTP(w, r)
 			return
 		}
 
 		// redirect to / with message
-		setSessionIDCookie(w, user.Password)
-		http.Redirect(w, r, "/", http.StatusSeeOther)
+		s.setSessionIDCookie(w, user.Password)
+		s.SessionMap[user.Password] = user
+		//data := &web.DataVals{
+		//	User:user,
+		//	IsAuthenticated:true,
+		//	Message:fmt.Sprintf("Welcome back %v",user.Name),
+		//}
+		data := s.getDefaultDataVals(nil, r)
+		data.User = user
+		data.Message = fmt.Sprintf("Welcome back %v", user.Name)
+		data.IsAuthenticated = true
+		s.HandleHomePage(data).ServeHTTP(w, r)
+		//http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 
 	}
 
 }
 
-func (s *Server) HandleCreateUser(emailName string, password string, w http.ResponseWriter) {
+func (s *Server) CreateUser(emailName string, password string, w http.ResponseWriter) *models.User {
 	u := &models.User{
 
 		Name: emailName,
@@ -503,15 +573,16 @@ func (s *Server) HandleCreateUser(emailName string, password string, w http.Resp
 		Active: true,
 	}
 	u.SetEncryptedPassword(password)
-	_, err := s.UserRepo.Create(u)
+	id, err := s.UserRepo.Create(u)
 	if err != nil {
 		s.serverError(w, err)
 	}
-	setSessionIDCookie(w, u.Password)
-
+	u.ID = id
+	s.setSessionIDCookie(w, u.Password)
+	return u
 }
 
-func setSessionIDCookie(w http.ResponseWriter, hashedPW string) {
+func (s *Server) setSessionIDCookie(w http.ResponseWriter, hashedPW string) {
 	// need to create and store sessionid
 	cookie := http.Cookie{
 		Name:    "sessionid",
@@ -519,6 +590,49 @@ func setSessionIDCookie(w http.ResponseWriter, hashedPW string) {
 		Path:    "/",
 		Expires: time.Now().Add(time.Hour),
 	}
+	if hashedPW == "" {
+		// delete it
+		cookie.MaxAge = 0
+		cookie.Expires = time.Now().AddDate(0, -1, 0)
+	}
 	http.SetCookie(w, &cookie)
 
+}
+
+func (s *Server) LoginForNoSession(next http.Handler) http.HandlerFunc {
+
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		sessionID, err := r.Cookie("sessionid")
+
+		if sessionID == nil || err != nil {
+			http.Redirect(w, r, "/display/login", http.StatusSeeOther)
+
+			return
+		} else {
+			if _, ok := s.SessionMap[sessionID.Value]; !ok {
+				s.RemoveSessionInfo(r, w)
+				http.Redirect(w, r, "/display/login", http.StatusSeeOther)
+			}
+		}
+
+		next.ServeHTTP(w, r)
+	}
+}
+
+func (s *Server) HandleLogOut() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		s.RemoveSessionInfo(r, w)
+		http.Redirect(w, r, "/display/login", http.StatusSeeOther)
+	})
+}
+
+func (s *Server) RemoveSessionInfo(r *http.Request, w http.ResponseWriter) {
+	sessionID, err := r.Cookie("sessionid")
+	if err != nil {
+		sessionID = &http.Cookie{Value: "none"}
+	}
+	delete(s.SessionMap, sessionID.Value)
+	s.setSessionIDCookie(w, "")
+	// will delete cookie
 }
