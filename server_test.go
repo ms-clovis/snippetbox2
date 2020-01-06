@@ -37,12 +37,13 @@ func TestServer_HandleHome(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/home", nil)
 
 	resp := httptest.NewRecorder()
+
 	h.ServeHTTP(resp, req)
 	if resp.Code != 200 {
 		t.Fatalf("expected status code to be 200, but got: %d", resp.Code)
 	}
-	fmt.Println("__________________")
-	fmt.Println(resp.Body)
+	//fmt.Println("__________________")
+	//fmt.Println(resp.Body)
 
 }
 
@@ -65,10 +66,7 @@ func TestServer_WrongMethod(t *testing.T) {
 	if resp.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("expected status code to be 405, but got: %d", resp.Code)
 	}
-	//fmt.Println("__________________")
-	//fmt.Println(resp.Body)
 
-	//req := httptest.NewRequest("POST", "/snippet/create", nil)
 }
 
 func setUpServerTesting(t *testing.T) (*infrastructure.Server, sqlmock.Sqlmock) {
