@@ -43,7 +43,7 @@ func checkSessionMapForExpiredSessions() {
 }
 
 func NewServer() *Server {
-	slog.Debug("Should not see this")
+	//slog.Debug("Should not see this")
 
 	s := &Server{}
 	ticker := time.NewTicker(time.Hour)

@@ -1,8 +1,9 @@
-package infrastructure
+package snippetbox
 
 import (
 	"fmt"
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/ms-clovis/snippetbox/pkg/infrastructure"
 	"github.com/ms-clovis/snippetbox/pkg/models"
 	"github.com/ms-clovis/snippetbox/pkg/repository/mysql"
 	"net/http"
@@ -29,7 +30,7 @@ func TestServer_HandleHome(t *testing.T) {
 	mock.ExpectQuery("SELECT").
 		WillReturnRows(rows)
 
-	h := s.HandleHomePage()
+	h := s.HandleHomePage(nil)
 
 	ts := httptest.NewServer(h)
 	defer ts.Close()
@@ -59,6 +60,8 @@ func TestServer_WrongMethod(t *testing.T) {
 
 	resp := httptest.NewRecorder()
 	h.ServeHTTP(resp, req)
+	result := resp.Result()
+	fmt.Println(result.Status)
 	if resp.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("expected status code to be 405, but got: %d", resp.Code)
 	}
@@ -68,8 +71,8 @@ func TestServer_WrongMethod(t *testing.T) {
 	//req := httptest.NewRequest("POST", "/snippet/create", nil)
 }
 
-func setUpServerTesting(t *testing.T) (*Server, sqlmock.Sqlmock) {
-	s := NewServer()
+func setUpServerTesting(t *testing.T) (*infrastructure.Server, sqlmock.Sqlmock) {
+	s := infrastructure.NewServer()
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
