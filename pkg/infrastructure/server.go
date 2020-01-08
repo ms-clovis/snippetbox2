@@ -210,9 +210,6 @@ func (s *Server) HandleDisplaySnippet() http.HandlerFunc {
 	tmpl := s.ParseTemplates("show.page.html", files)
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		//w.Header().Set("Content-Type", "application/json")
-		// use above for json responses
-
 		s.logPathAndMethod(r)
 		//if !s.isCorrectHttpMethod(r, w, http.MethodGet) {
 		//	return
@@ -224,6 +221,10 @@ func (s *Server) HandleDisplaySnippet() http.HandlerFunc {
 		urlVals := strings.Split(urlStr, "/")
 		if len(urlVals) == 4 {
 			idStr = urlVals[3]
+		}
+		var id int
+		if strings.TrimSpace(idStr) == "" { // empty value for ID
+			idStr = "0"
 		}
 		id, err := strconv.Atoi(idStr)
 		if err != nil || id < 1 {
@@ -299,6 +300,9 @@ func (s *Server) HandleCreateSnippet() http.HandlerFunc {
 		content := req.PostForm.Get("content")
 		expiresDays := req.PostForm.Get("expires")
 
+		if expiresDays == "" {
+			expiresDays = "1" // give radio button a default
+		}
 		intExpiresDays, err := strconv.Atoi(expiresDays)
 		if err != nil {
 			s.Slog.Error(err)
