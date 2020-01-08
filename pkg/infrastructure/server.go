@@ -241,9 +241,12 @@ func (s *Server) HandleDisplaySnippet() http.HandlerFunc {
 			return
 
 		}
-		flash := s.Session.GetString(r, "flash")
-		//fmt.Println(flash)
-		s.Session.Remove(r, "flash")
+		var flash = ""
+		if s.Session != nil {
+			flash = s.Session.GetString(r, "flash")
+			//fmt.Println(flash)
+			s.Session.Remove(r, "flash")
+		}
 
 		data := &web.DataVals{
 			Message: flash,
@@ -345,7 +348,10 @@ func (s *Server) HandleCreateSnippet() http.HandlerFunc {
 			log.Fatal(err)
 		}
 		snippet.ID = int(id)
-		s.Session.Put(req, "flash", "Snippet successfully created!")
+		if s.Session != nil {
+			s.Session.Put(req, "flash", "Snippet successfully created!")
+		}
+
 		http.Redirect(w, req, fmt.Sprintf("/snippet/display/%v", snippet.ID), http.StatusSeeOther)
 	}
 }
@@ -379,8 +385,11 @@ func (s *Server) HandleLatestSnippet() http.HandlerFunc {
 			return
 
 		}
-		flash := s.Session.GetString(r, "flash")
-		s.Session.Remove(r, "flash")
+		flash := ""
+		if s.Session != nil {
+			flash = s.Session.GetString(r, "flash")
+			s.Session.Remove(r, "flash")
+		}
 
 		data := &web.DataVals{
 			Title:   "Lastest Snippet",
@@ -633,6 +642,6 @@ func (s *Server) RemoveSessionInfo(r *http.Request, w http.ResponseWriter) {
 		sessionID = &http.Cookie{Value: "none"}
 	}
 	delete(s.SessionMap, sessionID.Value)
-	s.setSessionIDCookie(w, "")
-	// will delete cookie
+	s.setSessionIDCookie(w, "") // will delete cookie
+
 }
