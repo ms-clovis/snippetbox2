@@ -2,7 +2,6 @@ package mysql
 
 import (
 	"database/sql"
-	"errors"
 	slog "github.com/go-eden/slf4go"
 	"github.com/ms-clovis/snippetbox/pkg/models"
 	"golang.org/x/crypto/bcrypt"
@@ -51,7 +50,7 @@ func (ur *UserRepository) fetchByID(query string, id int) (*models.User, error) 
 			return nil, err
 		}
 	} else {
-		return nil, errors.New("No Matching User")
+		return nil, models.ERRNoUserFound
 	}
 	if err = rows.Err(); err != nil {
 		return nil, err
