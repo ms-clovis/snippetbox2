@@ -10,8 +10,8 @@ var FakeSnippet = &models.Snippet{
 	ID:      1,
 	Title:   "Fake Snippet",
 	Content: "Fake Content",
-	Created: time.Now().Add(time.Minute),
-	Expires: time.Now().Add(time.Hour), // always expires in the future
+	Created: time.Time{},
+	Expires: time.Time{}, // always expires in the future
 	Author:  "mock@test.com",
 }
 
@@ -44,10 +44,8 @@ func (mr *MockSnippetRepository) Latest() (*models.Snippet, error) {
 }
 
 func (mr *MockSnippetRepository) Create(m *models.Snippet) (int64, error) {
-	if *m == *FakeSnippet {
-		return int64(FakeSnippet.ID), nil
-	}
-	return -1, models.ERRNoRecordFound
+
+	return int64(FakeSnippet.ID), nil
 }
 
 // not in usage yet but will be logical delete
