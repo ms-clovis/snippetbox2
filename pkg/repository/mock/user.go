@@ -12,28 +12,28 @@ var fakeUser = &models.User{
 	Active:   true,
 }
 
-type MockRepository struct {
+type MockUserRepository struct {
 	DB *sql.DB
 }
 
-func (mr *MockRepository) GetUserByID(id int) (*models.User, error) {
+func (mr *MockUserRepository) GetUserByID(id int) (*models.User, error) {
 	if id == int(fakeUser.ID) {
 		return fakeUser, nil
 	}
 	return nil, models.ERRNoUserFound
 }
 
-func (mr *MockRepository) GetUser(name string) (*models.User, error) {
+func (mr *MockUserRepository) GetUser(name string) (*models.User, error) {
 	if name == fakeUser.Name {
 		return fakeUser, nil
 	}
 	return nil, models.ERRNoUserFound
 }
 
-func (mr *MockRepository) IsAuthenticated(hashedPW string, pw string) bool {
+func (mr *MockUserRepository) IsAuthenticated(hashedPW string, pw string) bool {
 	return true
 }
-func (mr *MockRepository) Create(u *models.User) (int64, error) {
+func (mr *MockUserRepository) Create(u *models.User) (int64, error) {
 	if *u == *fakeUser {
 		return fakeUser.ID, nil
 	}
