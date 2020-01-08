@@ -5,6 +5,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/ms-clovis/snippetbox/pkg/infrastructure"
 	"github.com/ms-clovis/snippetbox/pkg/models"
+	"github.com/ms-clovis/snippetbox/pkg/repository/mock"
 	"github.com/ms-clovis/snippetbox/pkg/repository/mysql"
 	"net/http"
 	"net/http/httptest"
@@ -12,8 +13,47 @@ import (
 	"time"
 )
 
+func TestServer_HandleDisplaySnippet(t *testing.T) {
+	s := infrastructure.NewServer()
+	s.SnippetRepo = &mock.MockSnippetRepository{DB: nil}
+	defer s.SnippetRepo.CloseDB()
+
+	//s.Session = &sessions.Session{}
+	h := s.HandleDisplaySnippet()
+	ts := httptest.NewServer(h)
+	defer ts.Close()
+
+	tests := []struct {
+		Name               string
+		URL                string
+		WantedResponseCode int
+		WantedBody         []byte
+	}{
+		{Name: "Valid ID", URL: "/snippet/display/1", WantedResponseCode: http.StatusOK, WantedBody: []byte(mock.FakeSnippet.Content)},
+		{"Alpha ID", "/snippet/display/1A", http.StatusBadRequest, nil},
+		{"Float ID", "/snippet/display/1.23", http.StatusBadRequest, nil},
+		{"Empty ID", "/snippet/display/", http.StatusBadRequest, nil},
+		{"Trailing Slash with good ID", "/snippet/display/1/", http.StatusBadRequest, nil},
+	}
+	for _, test := range tests {
+		t.Run(test.Name, func(t *testing.T) {
+
+			req := httptest.NewRequest(http.MethodGet, test.URL, nil)
+
+			resp := httptest.NewRecorder()
+
+			h.ServeHTTP(resp, req)
+			if resp.Code != test.WantedResponseCode {
+				t.Errorf("Invalid test: %v\nWanted Response: %v\nActual Response: %v\nBody: %v\n",
+					test.Name, test.WantedResponseCode, resp.Code, resp.Body)
+			}
+		})
+	}
+
+}
+
 func TestServer_HandleHome(t *testing.T) {
-	s, mock := setUpServerTesting(t)
+	s, m := setUpServerTesting(t)
 	defer s.SnippetRepo.CloseDB()
 	snippet := &models.Snippet{
 		ID:      1,
@@ -24,10 +64,10 @@ func TestServer_HandleHome(t *testing.T) {
 		Author:  "bar@test.com",
 	}
 
-	rows := mock.NewRows([]string{"id", "title", "content", "created", "expired", "author"}).
+	rows := m.NewRows([]string{"id", "title", "content", "created", "expired", "author"}).
 		AddRow(snippet.ID, snippet.Title,
 			snippet.Content, snippet.Created, snippet.Expires, snippet.Author)
-	mock.ExpectQuery("SELECT").
+	m.ExpectQuery("SELECT").
 		WillReturnRows(rows)
 
 	h := s.HandleHomePage(nil)
@@ -71,13 +111,13 @@ func TestServer_WrongMethod(t *testing.T) {
 
 func setUpServerTesting(t *testing.T) (*infrastructure.Server, sqlmock.Sqlmock) {
 	s := infrastructure.NewServer()
-	db, mock, err := sqlmock.New()
+	db, m, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 
 	s.SnippetRepo = mysql.NewSnippetRepo(db)
-	return s, mock
+	return s, m
 }
 
 func TestServer_HandleCreateSnippet(t *testing.T) {
@@ -88,7 +128,7 @@ func TestServer_HandleCreateSnippet(t *testing.T) {
 	//	//}
 	//	//
 	//	//s.SnippetRepo = mysql.NewSnippetRepo(db)
-	s, mock := setUpServerTesting(t)
+	s, m := setUpServerTesting(t)
 	defer s.SnippetRepo.CloseDB()
 
 	snippet := &models.Snippet{
@@ -98,7 +138,7 @@ func TestServer_HandleCreateSnippet(t *testing.T) {
 		Created: time.Now(),
 		Expires: time.Now().Add(time.Hour),
 	}
-	mock.ExpectExec("INSERT ").
+	m.ExpectExec("INSERT ").
 		WithArgs(snippet.Title, snippet.Content, snippet.Created, snippet.Expires).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
