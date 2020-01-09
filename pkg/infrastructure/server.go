@@ -123,7 +123,7 @@ func (s *Server) HandleLoginShowForm(data *web.DataVals) http.HandlerFunc {
 	tmpl := s.ParseTemplates("login.page.html", files)
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		if data == nil || data.User.ID == 0 {
+		if data == nil || data.User == nil {
 			data = s.getDefaultDataVals(data, r)
 		}
 		s.logPathAndMethod(r)
@@ -499,11 +499,7 @@ func (s *Server) HandleLoginRegistration() http.HandlerFunc {
 			user := &models.User{Name: emailName, Password: password}
 
 			data := s.getDefaultDataVals(nil, r)
-			//data := &web.DataVals{
-			//	Title:"Login - Registration",
-			//	Errors:errs,
-			//	User:user,
-			//}
+
 			data.Title = "Login - Registration"
 			data.Errors = errs
 			data.User = user
@@ -612,9 +608,9 @@ func (s *Server) setSessionIDCookie(w http.ResponseWriter, hashedPW string) {
 
 }
 
-func (s *Server) LoginForNoSession(next http.Handler) http.HandlerFunc {
+func (s *Server) LoginForNoSession(next http.Handler) http.Handler {
 
-	return func(w http.ResponseWriter, r *http.Request) {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		sessionID, err := r.Cookie("sessionid")
 
@@ -630,7 +626,7 @@ func (s *Server) LoginForNoSession(next http.Handler) http.HandlerFunc {
 		}
 
 		next.ServeHTTP(w, r)
-	}
+	})
 }
 
 func (s *Server) HandleLogOut() http.Handler {
