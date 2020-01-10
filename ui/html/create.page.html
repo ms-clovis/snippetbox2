@@ -13,27 +13,28 @@
         <br>
     {{end}}
     <form action='/snippet/create' method='POST'>
+        <input type='hidden' name='csrf_token' value='{{.CSRFToken}}'>
         <div>
             {{if .Errors.Title}}
-                <label class="error">Title: {{index .Errors "Title"}}</label>
+                <label class="error" for="title">Title: {{index .Errors "Title"}}</label>
             {{else}}
-                <label>Title:</label>
+                <label for="title">Title:</label>
             {{end}}
 
             <input type='text' name='title' value="{{.Snippet.Title }}">
         </div>
         <div>
             {{ if .Errors.Content}}
-                <label class="error">Content: {{index .Errors "Content"}}</label>
+                <label for="content" class="error">Content: {{index .Errors "Content"}}</label>
             {{else}}
-                <label>Content:</label>
+                <label for="content">Content:</label>
              {{end}}
 
             <textarea name='content'>{{.Snippet.Content}}</textarea>
         </div>
         <div>
 
-            <label>Delete in:</label>
+            <label for="expires">Delete in:</label>
             <input type='radio' name='expires' value='365'> One Year
             <input type='radio' name='expires' value='7'> One Week
             <input type='radio' name='expires' value='1' checked > One Day

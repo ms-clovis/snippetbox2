@@ -9,6 +9,8 @@ import (
 	"github.com/ms-clovis/snippetbox/pkg/repository/mysql"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"strings"
 	"testing"
 	"time"
 )
@@ -128,33 +130,31 @@ func TestServer_HandleCreateSnippet(t *testing.T) {
 	//	//}
 	//	//
 	//	//s.SnippetRepo = mysql.NewSnippetRepo(db)
-	s, m := setUpServerTesting(t)
+	s, _ := setUpServerTesting(t)
+	s.SnippetRepo = &mock.MockSnippetRepository{}
 	defer s.SnippetRepo.CloseDB()
 
-	snippet := &models.Snippet{
-		ID:      1,
-		Title:   "Test snippet",
-		Content: "I am a test snippet",
-		Created: time.Now(),
-		Expires: time.Now().Add(time.Hour),
-	}
-	m.ExpectExec("INSERT ").
-		WithArgs(snippet.Title, snippet.Content, snippet.Created, snippet.Expires).
-		WillReturnResult(sqlmock.NewResult(0, 1))
-
+	snippet := mock.FakeSnippet
+	//m.ExpectExec("INSERT ").
+	//	WithArgs(snippet.Title, snippet.Content, snippet.Created, snippet.Expires).
+	//	WillReturnResult(sqlmock.NewResult(0, 1))
 	h := s.HandleCreateSnippet()
 
 	ts := httptest.NewServer(h)
 	defer ts.Close()
 
 	// body will eventually be snippet values !!!!!
-
-	req := httptest.NewRequest("POST", "/snippet/create", nil)
+	form := url.Values{}
+	form.Add("title", snippet.Title)
+	form.Add("content", snippet.Content)
+	form.Add("expires", "1")
+	req := httptest.NewRequest("POST", "/snippet/create", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	resp := httptest.NewRecorder()
 	h.ServeHTTP(resp, req)
-	if resp.Code != 200 {
-		t.Fatalf("expected status code to be 200, but got: %d", resp.Code)
+	if resp.Code != 303 {
+		t.Fatalf("expected status code to be 303, but got: %d", resp.Code)
 	}
 	fmt.Println("__________________")
 	fmt.Println(resp.Body)

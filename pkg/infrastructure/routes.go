@@ -10,7 +10,7 @@ import (
 
 func (s Server) Routes() {
 	// to use alice must be HANDLERS , not HANDLDERFUNCS, see recoverPanic
-	sessionMiddleWare := alice.New(s.Session.Enable, web.RecoverPanic, web.SecureHeaders, web.CSRFTokenSetter)
+	sessionMiddleWare := alice.New(s.Session.Enable, web.RecoverPanic, web.SecureHeaders) //, web.CSRFTokenSetter
 	loginRedirectIncl := sessionMiddleWare.Append(s.LoginForNoSession)
 
 	data := &web.DataVals{User: &models.User{}}

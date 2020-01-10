@@ -126,6 +126,8 @@ func (s *Server) HandleLoginShowForm(data *web.DataVals) http.HandlerFunc {
 		if data == nil || data.User == nil {
 			data = s.getDefaultDataVals(data, r)
 		}
+		data.CSRFToken = nosurf.Token(r) // need all times for the login
+
 		s.logPathAndMethod(r)
 
 		if r.Method != http.MethodGet && r.Method != http.MethodPost {
@@ -158,7 +160,7 @@ func (s *Server) HandleHomePage(data *web.DataVals) http.HandlerFunc {
 		if data == nil || data.User.ID == 0 {
 			data = s.getDefaultDataVals(data, r)
 		}
-
+		data.CSRFToken = nosurf.Token(r)
 		s.logPathAndMethod(r)
 
 		if r.Method != http.MethodGet && r.Method != http.MethodPost {
@@ -166,11 +168,6 @@ func (s *Server) HandleHomePage(data *web.DataVals) http.HandlerFunc {
 			s.clientError(w, http.StatusMethodNotAllowed)
 			return
 		}
-		//if r.URL.Path != "/" && r.URL.Path != "/home" {
-		//	s.Slog.Error("Incorrect Path: " + r.URL.Path)
-		//	http.NotFound(w, r)
-		//	return
-		//}
 
 		snippets, err := s.SnippetRepo.Fetch(10)
 		if err != nil {
@@ -562,6 +559,7 @@ func (s *Server) HandleLoginRegistration() http.HandlerFunc {
 		//	IsAuthenticated:true,
 		//	Message:fmt.Sprintf("Welcome back %v",user.Name),
 		//}
+
 		data := s.getDefaultDataVals(nil, r)
 		data.User = user
 		data.Message = fmt.Sprintf("Welcome back %v", user.Name)

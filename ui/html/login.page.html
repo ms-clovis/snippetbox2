@@ -13,6 +13,7 @@
         <br>
     {{end}}
     <form action='/user/login' method='POST'>
+        <input type='hidden' name='csrf_token' value='{{.CSRFToken}}'>
         <div>
             {{if .Errors.Name}}
                 <label class="error">Name: {{index .Errors "Name"}}</label>
