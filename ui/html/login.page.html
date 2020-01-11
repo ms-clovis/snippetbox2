@@ -16,20 +16,20 @@
         <input type='hidden' name='csrf_token' value='{{.CSRFToken}}'>
         <div>
             {{if .Errors.Name}}
-                <label class="error">Name: {{index .Errors "Name"}}</label>
+                <label class="error" for="Name">Name: {{index .Errors "Name"}}</label>
             {{else}}
-                <label>Name:</label>
+                <label for="Name">Name:</label>
             {{end}}
 
-            <input type='text' name='Name' value="{{.User.Name }}">
+            <input type='text' name='Name' id="Name" value="{{.User.Name }}">
         </div>
         <div>
             {{ if .Errors.Password}}
                 <label class="error" for="Password" >Password: {{index .Errors "Password"}}</label>
             {{else}}
-                <label>Password:</label>
+                <label for="Password">Password:</label>
             {{end}}
-            <input type="password" name="Password">
+            <input type="password" name="Password" id="Password">
 
         </div>
 
