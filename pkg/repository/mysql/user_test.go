@@ -125,3 +125,30 @@ func TestUserRepository_Create(t *testing.T) {
 	}
 
 }
+
+func TestUserRepository_Update(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Error(err)
+	}
+	ur := NewUserRepository(db)
+	defer ur.CloseDB()
+
+	name := "foo@test.com"
+	user := &models.User{
+		ID:       1,
+		Name:     name,
+		Password: "123456",
+		Active:   true,
+	}
+
+	user.SetEncryptedPassword(user.Password)
+	mock.ExpectExec("UPDATE").
+		WithArgs(user.Name, user.Password, user.Active, user.ID).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	worked, err := ur.Update(user)
+	if !worked || err != nil {
+		t.Fatal("Did not update user")
+	}
+
+}

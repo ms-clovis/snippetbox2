@@ -125,3 +125,15 @@ func (ur *UserRepository) fetchByUserNamePassword(query string, user *models.Use
 	}
 	return user, nil
 }
+
+func (ur *UserRepository) Update(u *models.User) (bool, error) {
+	update := "UPDATE snippetbox.users SET name = ?, password = ?, active = ? WHERE id = ?"
+	r, err := ur.DB.Exec(update, u.Name, u.Password, u.Active, u.ID)
+	if err != nil {
+		return false, err
+	}
+	if rows, err := r.RowsAffected(); rows != 1 || err != nil {
+		return false, err
+	}
+	return true, nil
+}
