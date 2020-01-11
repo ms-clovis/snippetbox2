@@ -23,10 +23,11 @@
             <a href="/snippet/create">Create a Snippet</a>
             {{if .IsAuthenticated}}
                 <a href="/user/logout">{{.User.Name}} Logout</a>
+                <a href="/display/password">Change Password</a>
             {{else}}
                 <a href="/display/login">Login/Register</a>
             {{end}}
-        </nav>r
+        </nav>
         <main>
             {{template "main" .}}
         </main>
