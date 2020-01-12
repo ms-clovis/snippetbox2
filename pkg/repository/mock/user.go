@@ -39,3 +39,6 @@ func (mr *MockUserRepository) Create(u *models.User) (int64, error) {
 	}
 	return 0, models.ERRUserAlreadyExists
 }
+func (mr *MockUserRepository) Update(u *models.User) (bool, error) {
+	return true, nil
+}
