@@ -4,13 +4,20 @@
 
 {{define "main"}}
     {{with .Message}}
+        <!--suppress ALL -->
         <div class="flash">{{.}}</div>
     {{end}}
     {{with .Snippet}}
         <div class='snippet'>
             <div class='metadata'>
                 <strong>{{.Title}}</strong>
-                <span>#{{.ID}}</span>
+                <span>
+                    <form method="post" action="/modify/snippet">
+                        <input type="hidden" value="{{.ID}}">
+                        <button class="buttonEdit" type="submit">Edit</button>
+                    </form>
+{{/*                    <a href="/modify/snippet/{{.ID}}">Edit</a>*/}}
+                </span>
             </div>
 
             <pre><code>{{.Content}}</code></pre>
