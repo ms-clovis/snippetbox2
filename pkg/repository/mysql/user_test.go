@@ -15,7 +15,7 @@ func TestUserRepository_IsAuthenticated(t *testing.T) {
 		Password: password,
 		Active:   true,
 	}
-	//pw ,_ := bcrypt.GenerateFromPassword([]byte(user.Password),bcrypt.DefaultCost)
+
 	user.SetEncryptedPassword(password)
 	ur := UserRepository{}
 
