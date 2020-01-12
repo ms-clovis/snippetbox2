@@ -1,6 +1,8 @@
 package validation
 
 import (
+	"golang.org/x/crypto/bcrypt"
+	"math/big"
 	"regexp"
 	"strconv"
 	"strings"
@@ -9,6 +11,12 @@ import (
 
 func IsBlank(s string) bool {
 	return strings.TrimSpace(s) == ""
+}
+
+func IsAuthenticated(hashedPW string, pw string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hashedPW), []byte(pw))
+	return err == nil
+
 }
 
 func IsLessThanChars(s string, numberOfChars int) bool {
@@ -35,15 +43,21 @@ func IsValidEmailAddr(mail string) bool {
 	return len(mail) <= 254 && rx.MatchString(mail)
 }
 
-func isInteger(s string) bool {
+func IsInteger(s string) bool {
 	_, err := strconv.Atoi(s)
-	return err != nil
+	var ok bool
+	if err != nil && strings.Contains(err.Error(), "value out of range") {
+		n := new(big.Int)
+		_, ok = n.SetString(s, 10)
+	}
+	return err == nil || ok
 }
 
-func IsFloat(s string) bool {
-	_, err := strconv.ParseFloat(s, 64)
-	return err != nil
-}
+//func IsFloat(s string) bool {
+//	f, err := strconv.ParseFloat(s, 64)
+//
+//	return err == nil && s == sameStr
+//}
 
 //func IsDate(s string,layout string)bool{
 //
