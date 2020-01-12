@@ -4,6 +4,7 @@
 
 {{define "main"}}
     {{if .Errors}}
+        <!--suppress HtmlUnknownTarget -->
         <h4 class="error">Errors in Form:</h4>
             <ul>
             {{range .Errors}}
@@ -33,11 +34,11 @@
             <textarea name='content' id="content">{{.Snippet.Content}}</textarea>
         </div>
         <div>
-
+            {{$expiresDays := or .ExpiresDays "1"}}
             <label for="expires">Delete in:</label>
-            <input type='radio' name='expires' id="expires" value='365'> One Year
-            <input type='radio' name='expires' id="expires" value='7'> One Week
-            <input type='radio' name='expires' id="expires" value='1' checked > One Day
+            <input type='radio' name='expires' id="expires" value='365' {{if eq $expiresDays "365"}} checked {{end}}> One Year
+            <input type='radio' name='expires' id="expires" value='7'  {{if eq $expiresDays "7"}} checked {{end}}> One Week
+            <input type='radio' name='expires' id="expires" value='1' {{if eq $expiresDays "1"}} checked {{end}}> One Day
         </div>
         <div>
             <input type='submit' value='Publish snippet'>

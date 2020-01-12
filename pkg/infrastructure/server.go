@@ -21,7 +21,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"unicode/utf8"
 )
 
 type Server struct {
@@ -114,7 +113,7 @@ func (s *Server) SetRepo(driverName string, dsnString string) {
 }
 
 func (s *Server) HandleLoginShowForm(data *web.DataVals) http.HandlerFunc {
-	s.Slog.Info("Handle Login Show Form")
+
 	files := []string{
 		"./ui/html/login.page.html",
 		"./ui/html/base.layout.html",
@@ -123,17 +122,22 @@ func (s *Server) HandleLoginShowForm(data *web.DataVals) http.HandlerFunc {
 	tmpl := s.ParseTemplates("login.page.html", files)
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		if data == nil || data.User == nil {
+		s.Slog.Info("Handle Login Show Form")
+		s.logPathAndMethod(r)
+		if data == nil {
 			data = s.getDefaultDataVals(data, r)
 		}
 		data.CSRFToken = nosurf.Token(r) // need all times for the login
 
 		s.logPathAndMethod(r)
-
-		if r.Method != http.MethodGet && r.Method != http.MethodPost {
+		if !s.isCorrectHttpMethod(r, w, http.MethodGet) {
 			s.clientError(w, http.StatusMethodNotAllowed)
 			return
 		}
+		//if r.Method != http.MethodGet && r.Method != http.MethodPost {
+		//	s.clientError(w, http.StatusMethodNotAllowed)
+		//	return
+		//}
 		if r.URL.Path != "/display/login" && r.URL.Path != "/user/login" {
 			s.Slog.Error("Incorrect Path: " + r.URL.Path)
 			http.NotFound(w, r)
@@ -157,7 +161,7 @@ func (s *Server) HandleHomePage(data *web.DataVals) http.HandlerFunc {
 	tmpl := s.ParseTemplates("home.page.html", files)
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		if data == nil || data.User.ID == 0 {
+		if data == nil || !data.IsAuthenticated {
 			data = s.getDefaultDataVals(data, r)
 		}
 		data.CSRFToken = nosurf.Token(r)
@@ -279,12 +283,91 @@ func (s *Server) CatchTemplateErrors(tmpl *template.Template, data interface{}, 
 	}
 }
 
-func (s *Server) HandleCreateSnippet() http.HandlerFunc {
-	s.Slog.Info("Handle Create Snippet")
-	return func(w http.ResponseWriter, req *http.Request) {
+func (s *Server) HandleChangePassword() http.HandlerFunc {
 
+	return func(w http.ResponseWriter, r *http.Request) {
+		s.Slog.Info("Handle Change Password")
+		s.logPathAndMethod(r)
+		if !s.isCorrectHttpMethod(r, w, http.MethodPost) {
+			s.clientError(w, http.StatusMethodNotAllowed)
+			return
+		}
+		err := r.ParseForm()
+		if err != nil {
+			slog.Error(err)
+			s.serverError(w, err)
+		}
+		user := s.getSessionUser(r)
+		data := s.getDefaultDataVals(nil, r)
+
+		oldPass := r.PostFormValue("extPass")
+		newPass := r.PostFormValue("newPass")
+		newPassMatch := r.PostFormValue("newPassMatch")
+
+		errs := make(map[string]string)
+		// check for input errors
+
+		if !validation.IsAuthenticated(user.Password, oldPass) {
+			errs["ExtPass"] = "Problem with existing password"
+		}
+		if validation.IsLessThanChars(newPass, 6) {
+			errs["NewPass"] = "New Password must have a least 6 characters"
+		}
+		if newPass != newPassMatch {
+			errs["NewPassMatch"] = "New Passwords do not match"
+		}
+
+		// problem with passwords
+		if len(errs) > 0 {
+			data.Errors = errs
+			r.Method = http.MethodGet
+			s.HandleChangePasswordForm(data).ServeHTTP(w, r)
+			return
+		}
+		// else change the password
+		user.SetEncryptedPassword(newPass)
+		worked, err := s.UserRepo.Update(user)
+		if err != nil || !worked {
+			s.serverError(w, err)
+			return
+		}
+		data.Message = "Password successfully changed"
+		data.User = user
+		s.HandleHomePage(data).ServeHTTP(w, r)
+		return
+
+	}
+
+}
+
+func (s *Server) HandleChangePasswordForm(data *web.DataVals) http.HandlerFunc {
+	s.Slog.Info("Handle Change Password form (display)")
+
+	files := []string{
+		"./ui/html/password.page.html",
+		"./ui/html/base.layout.html",
+		"./ui/html/footer.partial.html",
+	}
+	tmpl := s.ParseTemplates("password.page.html", files)
+	return func(w http.ResponseWriter, r *http.Request) {
+		s.logPathAndMethod(r)
+		if !s.isCorrectHttpMethod(r, w, http.MethodGet) {
+			return
+		}
+		if data == nil || !data.IsAuthenticated {
+			data = s.getDefaultDataVals(data, r)
+		}
+		s.CatchTemplateErrors(tmpl, data, w)
+	}
+}
+
+func (s *Server) HandleCreateSnippet() http.HandlerFunc {
+
+	return func(w http.ResponseWriter, req *http.Request) {
+		s.Slog.Info("Handle Create Snippet")
 		s.logPathAndMethod(req)
 		if !s.isCorrectHttpMethod(req, w, http.MethodPost) {
+			s.clientError(w, http.StatusMethodNotAllowed)
 			return
 		}
 
@@ -301,6 +384,7 @@ func (s *Server) HandleCreateSnippet() http.HandlerFunc {
 			expiresDays = "1" // give radio button a default
 		}
 		intExpiresDays, err := strconv.Atoi(expiresDays)
+
 		if err != nil {
 			s.Slog.Error(err)
 			s.serverError(w, err)
@@ -317,18 +401,18 @@ func (s *Server) HandleCreateSnippet() http.HandlerFunc {
 		//get user from map
 
 		data := s.getDefaultDataVals(nil, req)
-		if strings.TrimSpace(title) == "" {
+		if validation.IsBlank(title) {
 			//e = append(e,"Must have title")
 			e["Title"] = "The Snippet must have a title"
 		}
-		if utf8.RuneCountInString(title) > 50 {
+		if validation.IsMoreThanChars(title, 50) {
 			e["Title"] = "The title can not be more than 100 characters"
 		}
-		if strings.TrimSpace(content) == "" {
+		if validation.IsBlank(content) {
 			//e = append(e,"Must have content")
 			e["Content"] = "The Snippet must have content"
 		}
-		if utf8.RuneCountInString(content) > 280 {
+		if validation.IsMoreThanChars(content, 280) {
 			e["Content"] = "The content can not be more than 280 characters"
 		}
 
@@ -338,6 +422,8 @@ func (s *Server) HandleCreateSnippet() http.HandlerFunc {
 			data.Snippet = models.NewEmptySnippet()
 			data.Snippet.Title = title
 			data.Snippet.Content = content
+			data.ExpiresDays = expiresDays
+			req.Method = http.MethodGet
 			s.HandleShowSnippetForm(data).ServeHTTP(w, req)
 
 			return
@@ -358,7 +444,7 @@ func (s *Server) HandleCreateSnippet() http.HandlerFunc {
 }
 
 func (s *Server) HandleLatestSnippet() http.HandlerFunc {
-	s.Slog.Info("Handle Latest Snippet")
+
 	files := []string{
 		"./ui/html/show.page.html",
 		"./ui/html/base.layout.html",
@@ -367,11 +453,11 @@ func (s *Server) HandleLatestSnippet() http.HandlerFunc {
 	tmpl := s.ParseTemplates("show.page.html", files)
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		//w.Header().Set("Content-Type", "application/json")
-		// use above for json responses
+		s.Slog.Info("Handle Latest Snippet")
 
 		s.logPathAndMethod(r)
 		if !s.isCorrectHttpMethod(r, w, http.MethodGet) {
+			s.clientError(w, http.StatusMethodNotAllowed)
 			return
 		}
 
@@ -386,6 +472,7 @@ func (s *Server) HandleLatestSnippet() http.HandlerFunc {
 			return
 
 		}
+
 		flash := ""
 		if s.Session != nil {
 			flash = s.Session.GetString(r, "flash")
@@ -402,29 +489,44 @@ func (s *Server) HandleLatestSnippet() http.HandlerFunc {
 	}
 }
 
-func (s *Server) isCorrectHttpMethod(r *http.Request, w http.ResponseWriter, method string) bool {
-	if r.Method != method {
-		s.Slog.Error(r.Method)
-		s.Slog.Errorf("Method %v is wrong Http Method", r.Method)
-		w.Header().Set("Allow", method)
+func (s *Server) isCorrectHttpMethod(r *http.Request, w http.ResponseWriter, correctMethod string) bool {
+	if r.Method != correctMethod {
+		//s.Slog.Error(r.Method)
+		s.Slog.Errorf("Method %v is wrong Http Method,should be %v", r.Method, correctMethod)
+		w.Header().Set("Allow", correctMethod)
 		//w.WriteHeader(405)
 		//http.Error(w, "Method Not Allowed", 405)
-		s.clientError(w, http.StatusMethodNotAllowed)
+		//s.clientError(w, http.StatusMethodNotAllowed)
 		return false
 	}
 	return true
-}
-
-type FormVals struct {
-	Snippet *models.Snippet
-	User    *models.User
-	Errors  map[string]string
 }
 
 func (s Server) getDefaultDataVals(dv *web.DataVals, r *http.Request) *web.DataVals {
 	if dv == nil {
 		dv = &web.DataVals{}
 	}
+	user := s.getSessionUser(r)
+
+	dv.User = user
+	dv.IsAuthenticated = user.Active
+	dv.CurrentYear = time.Now().Year()
+	dv.CSRFToken = nosurf.Token(r)
+	if dv.Snippet != nil && dv.Snippet.Created.Unix() != -62135596800 {
+		dv.ExpiresDays = GetExpiresDays(dv.Snippet)
+	} else {
+		dv.ExpiresDays = "1"
+	}
+	return dv
+}
+
+func GetExpiresDays(s *models.Snippet) string {
+	timeDiff := s.Expires.Sub(s.Created).Round(time.Hour)
+	days := timeDiff.Hours() / 24
+	return fmt.Sprintf("%v", days)
+}
+
+func (s Server) getSessionUser(r *http.Request) *models.User {
 	sessionID, err := r.Cookie("sessionid")
 	if err != nil {
 		sessionID = &http.Cookie{Value: "none"}
@@ -433,17 +535,10 @@ func (s Server) getDefaultDataVals(dv *web.DataVals, r *http.Request) *web.DataV
 	if !ok {
 		user = &models.User{}
 	}
-
-	dv.User = user
-	dv.IsAuthenticated = user.Active
-	dv.CurrentYear = time.Now().Year()
-	dv.CSRFToken = nosurf.Token(r)
-
-	return dv
+	return user
 }
 
 func (s Server) HandleShowSnippetForm(data *web.DataVals) http.HandlerFunc {
-	s.Slog.Info("Handle show Snippet form")
 
 	files := []string{
 		"./ui/html/create.page.html",
@@ -453,10 +548,13 @@ func (s Server) HandleShowSnippetForm(data *web.DataVals) http.HandlerFunc {
 	tmpl := s.ParseTemplates("create.page.html", files)
 
 	return func(w http.ResponseWriter, r *http.Request) {
+		s.Slog.Info("Handle show Snippet form")
 		s.logPathAndMethod(r)
-		//if !s.isCorrectHttpMethod(r, w, http.MethodGet) {
-		//	return
-		//}
+		if !s.isCorrectHttpMethod(r, w, http.MethodGet) {
+			s.clientError(w, http.StatusMethodNotAllowed)
+			return
+		}
+
 		data = s.getDefaultDataVals(data, r)
 
 		s.CatchTemplateErrors(tmpl, data, w)
@@ -464,10 +562,13 @@ func (s Server) HandleShowSnippetForm(data *web.DataVals) http.HandlerFunc {
 }
 
 func (s *Server) HandleLoginRegistration() http.HandlerFunc {
-	s.Slog.Info("Handle Login registration")
+
 	return func(w http.ResponseWriter, r *http.Request) {
+		s.Slog.Info("Handle Login registration")
 		s.logPathAndMethod(r)
-		s.isCorrectHttpMethod(r, w, http.MethodPost)
+		if !s.isCorrectHttpMethod(r, w, http.MethodPost) {
+			s.clientError(w, http.StatusMethodNotAllowed)
+		}
 		err := r.ParseForm()
 		if err != nil {
 			slog.Error(err)
@@ -501,6 +602,7 @@ func (s *Server) HandleLoginRegistration() http.HandlerFunc {
 			data.Errors = errs
 			data.User = user
 			w.WriteHeader(http.StatusSeeOther)
+			r.Method = http.MethodGet
 			s.HandleLoginShowForm(data).ServeHTTP(w, r)
 			return
 		}
@@ -515,13 +617,14 @@ func (s *Server) HandleLoginRegistration() http.HandlerFunc {
 
 			user = s.CreateUser(emailName, password, w)
 			s.SessionMap[user.Password] = user
-
-			http.Redirect(w, r, "/", http.StatusSeeOther)
+			r.Method = http.MethodGet
+			s.HandleHomePage(nil).ServeHTTP(w, r)
+			//http.Redirect(w, r, "/", http.StatusSeeOther)
 			return
 		}
 		// check to see if logged In
 
-		isAuth := s.UserRepo.IsAuthenticated(user.Password, password)
+		isAuth := validation.IsAuthenticated(user.Password, password)
 
 		if !isAuth {
 			// change error map
@@ -530,22 +633,13 @@ func (s *Server) HandleLoginRegistration() http.HandlerFunc {
 			}
 			errs["General"] = "Your UserName / Password is incorrect"
 
-			//sessionID, err := r.Cookie("sessionid")
-			//if err != nil {
-			//	sessionID = &http.Cookie{Value:"none"}
-			//}
-			//u,ok := s.SessionMap[sessionID.Value]
-			//if ok{
-			//	// use user in sessionMap
-			//	user = u
-			//}
 			//otherwise use user from database
 			data := s.getDefaultDataVals(nil, r)
 
 			data.User = user
 			data.Errors = errs
 			data.Title = "Login - Registration"
-
+			r.Method = http.MethodGet
 			w.WriteHeader(http.StatusSeeOther)
 			s.HandleLoginShowForm(data).ServeHTTP(w, r)
 			return
@@ -554,16 +648,12 @@ func (s *Server) HandleLoginRegistration() http.HandlerFunc {
 		// redirect to / with message
 		s.setSessionIDCookie(w, user.Password)
 		s.SessionMap[user.Password] = user
-		//data := &web.DataVals{
-		//	User:user,
-		//	IsAuthenticated:true,
-		//	Message:fmt.Sprintf("Welcome back %v",user.Name),
-		//}
 
 		data := s.getDefaultDataVals(nil, r)
 		data.User = user
 		data.Message = fmt.Sprintf("Welcome back %v", user.Name)
 		data.IsAuthenticated = true
+		r.Method = http.MethodGet
 		s.HandleHomePage(data).ServeHTTP(w, r)
 		//http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
