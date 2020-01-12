@@ -14,7 +14,11 @@ func (s Server) Routes() {
 	loginRedirectIncl := sessionMiddleWare.Append(s.LoginForNoSession)
 
 	data := &web.DataVals{User: &models.User{}}
-	s.Router.Handle(http.MethodGet, "/user/logout", gin.WrapH(sessionMiddleWare.Then(s.HandleLogOut())))
+	s.Router.Handle(http.MethodPost, "/change/password", gin.WrapH(loginRedirectIncl.Then(s.HandleChangePassword())))
+
+	s.Router.Handle(http.MethodGet, "/display/password", gin.WrapH(loginRedirectIncl.Then(s.HandleChangePasswordForm(data))))
+
+	s.Router.Handle(http.MethodGet, "/user/logout", gin.WrapH(loginRedirectIncl.Then(s.HandleLogOut())))
 	s.Router.Handle(http.MethodPost, "/user/login", gin.WrapH(sessionMiddleWare.Then(s.HandleLoginRegistration())))
 
 	s.Router.Handle(http.MethodGet, "/display/login", gin.WrapH(sessionMiddleWare.Then(s.HandleLoginShowForm(data))))
