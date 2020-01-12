@@ -9,6 +9,7 @@ type DataVals struct {
 	User            *models.User
 	Snippets        []*models.Snippet
 	Snippet         *models.Snippet
+	ExpiresDays     string
 	Title           string
 	Message         string
 	IsAuthenticated bool
