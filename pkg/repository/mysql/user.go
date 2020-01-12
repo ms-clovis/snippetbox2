@@ -3,8 +3,8 @@ package mysql
 import (
 	"database/sql"
 	slog "github.com/go-eden/slf4go"
+	"github.com/ms-clovis/snippetbox/pkg/handlers/validation"
 	"github.com/ms-clovis/snippetbox/pkg/models"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type UserRepository struct {
@@ -94,19 +94,8 @@ func (ur *UserRepository) GetUserByID(id int) (*models.User, error) {
 }
 
 func (ur *UserRepository) IsAuthenticated(hashedPW string, pw string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(hashedPW), []byte(pw))
-	if err != nil {
-		return false
-	}
-	return true
-	//query := "SELECT id, name, password,active FROM users " +
-	//	"WHERE name = ? AND password = ? AND active = TRUE LIMIT 1"
-	//
-	//fetchedUser, err := ur.fetchByUserNamePassword(query, u)
-	//if err != nil {
-	//	return false, err
-	//}
-	//return *u == *fetchedUser, nil
+	return validation.IsAuthenticated(hashedPW, pw)
+
 }
 
 func (ur *UserRepository) fetchByUserNamePassword(query string, user *models.User) (*models.User, error) {
