@@ -24,12 +24,17 @@ func TestSnippetRepo_Create(t *testing.T) {
 		Content: "I am a test snippet",
 		Created: time.Now(),
 		Expires: time.Now().Add(time.Hour),
+		Author:  "mock@test.com",
 	}
+	user := &models.User{
+		ID: 1,
+	}
+
 	//mock.ExpectPrepare("INSERT")
-	mock.ExpectExec("INSERT").WithArgs(snippet.Title, snippet.Content, snippet.Created, snippet.Expires).
+	mock.ExpectExec("INSERT").WithArgs(snippet.Title, snippet.Content, snippet.Created, snippet.Expires, user.ID).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	id, err := sr.Create(snippet)
+	id, err := sr.Create(user, snippet)
 	if err != nil || int(id) != snippet.ID {
 		t.Error(err)
 		t.Error("Did not create snippet")
@@ -48,7 +53,7 @@ func TestSnippetRepo_Delete(t *testing.T) {
 	}
 	sr := NewSnippetRepo(db)
 	defer sr.CloseDB()
-	mock.ExpectExec("DELETE").
+	mock.ExpectExec("DELETE").WithArgs(1, 1).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	snippet := &models.Snippet{
 		ID:      1,
@@ -57,8 +62,10 @@ func TestSnippetRepo_Delete(t *testing.T) {
 		Created: time.Now(),
 		Expires: time.Now().Add(time.Hour),
 	}
-
-	wasDeleted, err := sr.Delete(snippet)
+	user := &models.User{
+		ID: 1,
+	}
+	wasDeleted, err := sr.Delete(user, snippet)
 	//snippet = nil
 	if err != nil || !wasDeleted {
 		t.Error("Snippet not deleted from DB")
@@ -88,12 +95,13 @@ func TestSnippetRepo_GetByID(t *testing.T) {
 		Expires: time.Now().Add(time.Hour),
 		Author:  "bar@test.com",
 	}
-
+	user := &models.User{ID: 1}
 	rows := sqlmock.NewRows([]string{"id", "title", "content", "created", "expires", "author"}).
 		AddRow(snippet.ID, snippet.Title, snippet.Content, snippet.Created, snippet.Expires, snippet.Author)
-	mock.ExpectQuery("SELECT").WithArgs(1).
+	mock.ExpectQuery("SELECT").WithArgs(1, 1).
 		WillReturnRows(rows)
-	s, err := sr.GetByID(snippet.ID)
+
+	s, err := sr.GetByID(user, snippet.ID)
 	if err != nil {
 		t.Error(err)
 	}

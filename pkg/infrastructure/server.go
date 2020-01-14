@@ -173,7 +173,7 @@ func (s *Server) HandleHomePage(data *web.DataVals) http.HandlerFunc {
 			return
 		}
 
-		snippets, err := s.SnippetRepo.Fetch(10)
+		snippets, err := s.SnippetRepo.Fetch(data.User, 10)
 		if err != nil {
 			s.Slog.Error(err)
 			http.NotFound(w, r)
@@ -232,7 +232,9 @@ func (s *Server) HandleDisplaySnippet() http.HandlerFunc {
 			s.clientError(w, http.StatusBadRequest)
 			return
 		}
-		snippet, err := s.SnippetRepo.GetByID(id)
+		data := s.getDefaultDataVals(nil, r)
+
+		snippet, err := s.SnippetRepo.GetByID(data.User, id)
 		if err != nil {
 			s.Slog.Error(err)
 			if err == models.ERRNoRecordFound {
@@ -250,7 +252,7 @@ func (s *Server) HandleDisplaySnippet() http.HandlerFunc {
 			s.Session.Remove(r, "flash")
 		}
 
-		data := &web.DataVals{
+		data = &web.DataVals{
 			Message: flash,
 			Snippet: snippet,
 			Title:   "Newest Snippet",
@@ -312,6 +314,9 @@ func (s *Server) HandleChangePassword() http.HandlerFunc {
 		}
 		if validation.IsLessThanChars(newPass, 6) {
 			errs["NewPass"] = "New Password must have a least 6 characters"
+		}
+		if oldPass == newPass {
+			errs["NewPass"] = "New Password can not be the same as the old password"
 		}
 		if newPass != newPassMatch {
 			errs["NewPassMatch"] = "New Passwords do not match"
@@ -379,6 +384,7 @@ func (s *Server) HandleCreateSnippet() http.HandlerFunc {
 		title := req.PostForm.Get("title")
 		content := req.PostForm.Get("content")
 		expiresDays := req.PostForm.Get("expires")
+		idStr := req.PostFormValue("ID")
 
 		if expiresDays == "" {
 			expiresDays = "1" // give radio button a default
@@ -428,15 +434,31 @@ func (s *Server) HandleCreateSnippet() http.HandlerFunc {
 
 			return
 		}
-
-		id, err := s.SnippetRepo.Create(snippet)
-
-		if err != nil {
-			log.Fatal(err)
+		var id int64
+		if validation.IsBlank(idStr) || idStr == "0" {
+			id, err = s.SnippetRepo.Create(data.User, snippet)
+			if err != nil {
+				log.Fatal(err)
+			}
+			snippet.ID = int(id)
+		} else {
+			id, err := strconv.Atoi(idStr)
+			if err != nil {
+				s.serverError(w, err)
+			}
+			snippet.ID = id
+			worked, err := s.SnippetRepo.Update(data.User, snippet)
+			if !worked || err != nil {
+				s.serverError(w, err)
+			}
 		}
-		snippet.ID = int(id)
+
 		if s.Session != nil {
-			s.Session.Put(req, "flash", "Snippet successfully created!")
+			if idStr == "" {
+				s.Session.Put(req, "flash", "Snippet successfully created!")
+			} else {
+				s.Session.Put(req, "flash", "Snippet successfully updated!")
+			}
 		}
 
 		http.Redirect(w, req, fmt.Sprintf("/snippet/display/%v", snippet.ID), http.StatusSeeOther)
@@ -460,8 +482,8 @@ func (s *Server) HandleLatestSnippet() http.HandlerFunc {
 			s.clientError(w, http.StatusMethodNotAllowed)
 			return
 		}
-
-		snippet, err := s.SnippetRepo.Latest()
+		data := s.getDefaultDataVals(nil, r)
+		snippet, err := s.SnippetRepo.Latest(data.User)
 		if err != nil {
 			s.Slog.Error(err)
 			if err == models.ERRNoRecordFound {
@@ -479,12 +501,15 @@ func (s *Server) HandleLatestSnippet() http.HandlerFunc {
 			s.Session.Remove(r, "flash")
 		}
 
-		data := &web.DataVals{
-			Title:   "Lastest Snippet",
-			Message: flash,
-			Snippet: snippet,
-		}
-		data = s.getDefaultDataVals(data, r)
+		//data := &web.DataVals{
+		//	Title:   "Lastest Snippet",
+		//	Message: flash,
+		//	Snippet: snippet,
+		//}
+		data.Title = "Latest Snippet"
+		data.Message = flash
+		data.Snippet = snippet
+
 		s.CatchTemplateErrors(tmpl, data, w)
 	}
 }
@@ -514,8 +539,6 @@ func (s Server) getDefaultDataVals(dv *web.DataVals, r *http.Request) *web.DataV
 	dv.CSRFToken = nosurf.Token(r)
 	if dv.Snippet != nil && dv.Snippet.Created.Unix() != -62135596800 {
 		dv.ExpiresDays = GetExpiresDays(dv.Snippet)
-	} else {
-		dv.ExpiresDays = "1"
 	}
 	return dv
 }
@@ -554,9 +577,25 @@ func (s Server) HandleShowSnippetForm(data *web.DataVals) http.HandlerFunc {
 			s.clientError(w, http.StatusMethodNotAllowed)
 			return
 		}
+		err := r.ParseForm()
+		if err != nil {
+			s.serverError(w, err)
+		}
+		idStr := r.FormValue("ID")
 
 		data = s.getDefaultDataVals(data, r)
-
+		if idStr != "" && idStr != "0" {
+			id, err := strconv.Atoi(idStr)
+			if err != nil {
+				s.clientError(w, http.StatusNoContent)
+			}
+			snippet, err := s.SnippetRepo.GetByID(data.User, id)
+			if err != nil {
+				s.serverError(w, err)
+			}
+			data.Snippet = snippet
+			data.ExpiresDays = GetExpiresDays(snippet)
+		}
 		s.CatchTemplateErrors(tmpl, data, w)
 	}
 }

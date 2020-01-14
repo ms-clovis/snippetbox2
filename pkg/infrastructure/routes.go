@@ -14,6 +14,8 @@ func (s Server) Routes() {
 	loginRedirectIncl := sessionMiddleWare.Append(s.LoginForNoSession)
 
 	data := &web.DataVals{User: &models.User{}}
+	s.Router.Handle(http.MethodPost, "/modify/snippet", gin.WrapH(loginRedirectIncl.Then(s.HandleShowSnippetForm(nil))))
+	s.Router.Handle(http.MethodGet, "/modify/snippet", gin.WrapH(loginRedirectIncl.Then(s.HandleShowSnippetForm(nil))))
 	s.Router.Handle(http.MethodPost, "/change/password", gin.WrapH(loginRedirectIncl.Then(s.HandleChangePassword())))
 
 	s.Router.Handle(http.MethodGet, "/display/password", gin.WrapH(loginRedirectIncl.Then(s.HandleChangePasswordForm(data))))
@@ -21,9 +23,9 @@ func (s Server) Routes() {
 	s.Router.Handle(http.MethodGet, "/user/logout", gin.WrapH(loginRedirectIncl.Then(s.HandleLogOut())))
 	s.Router.Handle(http.MethodPost, "/user/login", gin.WrapH(sessionMiddleWare.Then(s.HandleLoginRegistration())))
 
-	s.Router.Handle(http.MethodGet, "/display/login", gin.WrapH(sessionMiddleWare.Then(s.HandleLoginShowForm(data))))
+	s.Router.Handle(http.MethodGet, "/display/login", gin.WrapH(sessionMiddleWare.Then(s.HandleLoginShowForm(nil))))
 
-	s.Router.Handle(http.MethodGet, "/", gin.WrapH(loginRedirectIncl.Then(s.HandleHomePage(data))))
+	s.Router.Handle(http.MethodGet, "/", gin.WrapH(loginRedirectIncl.Then(s.HandleHomePage(nil))))
 	s.Router.Handle(http.MethodGet, "/snippet/display/:id", gin.WrapH(loginRedirectIncl.Then(s.HandleDisplaySnippet())))
 	s.Router.Handle(http.MethodPost, "/snippet/create", gin.WrapH(loginRedirectIncl.Then(s.HandleCreateSnippet())))
 	s.Router.Handle(http.MethodGet, "/snippet/create", gin.WrapH(loginRedirectIncl.Then(s.HandleShowSnippetForm(&web.DataVals{Title: "Create Snippet", Snippet: models.NewEmptySnippet()}))))

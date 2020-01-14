@@ -40,6 +40,7 @@
             <input type='radio' name='expires' id="expires" value='7'  {{if eq $expiresDays "7"}} checked {{end}}> One Week
             <input type='radio' name='expires' id="expires" value='1' {{if eq $expiresDays "1"}} checked {{end}}> One Day
         </div>
+        <input name="ID" type="hidden" value="{{.Snippet.ID}}">
         <div>
             <input type='submit' value='Publish snippet'>
         </div>

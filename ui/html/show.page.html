@@ -12,8 +12,8 @@
             <div class='metadata'>
                 <strong>{{.Title}}</strong>
                 <span>
-                    <form method="post" action="/modify/snippet">
-                        <input type="hidden" value="{{.ID}}">
+                    <form method="get" action="/modify/snippet">
+                        <input type="hidden" name="ID" value="{{.ID}}">
                         <button class="buttonEdit" type="submit">Edit</button>
                     </form>
 {{/*                    <a href="/modify/snippet/{{.ID}}">Edit</a>*/}}

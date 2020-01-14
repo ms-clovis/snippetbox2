@@ -16,11 +16,11 @@ func NewSnippetRepo(db *sql.DB) *SnippetRepo {
 }
 
 //noinspection ALL
-func (sr *SnippetRepo) fetch(query string, arg int) ([]*models.Snippet, error) {
+func (sr *SnippetRepo) fetch(query string, user *models.User, arg int) ([]*models.Snippet, error) {
 	//var ret []models.Snippet
 	//var snip models.Snippet
 
-	rows, err := sr.DB.Query(query, arg)
+	rows, err := sr.DB.Query(query, user.ID, arg)
 
 	defer rows.Close()
 	if err != nil {
@@ -48,30 +48,30 @@ func (sr *SnippetRepo) fetch(query string, arg int) ([]*models.Snippet, error) {
 
 //Convenience method to get all Snippets
 
-func (sr *SnippetRepo) FetchAll() ([]*models.Snippet, error) {
-	return sr.Fetch(0)
+func (sr *SnippetRepo) FetchAll(user *models.User) ([]*models.Snippet, error) {
+	return sr.Fetch(user, 0)
 }
 
 // Will retrieve (by limit) up to a certain number of Snippets
 // if the number to fetch is 0 it will retrieve all (no limit)
 
-func (sr *SnippetRepo) Fetch(numberToFetch int) ([]*models.Snippet, error) {
+func (sr *SnippetRepo) Fetch(user *models.User, numberToFetch int) ([]*models.Snippet, error) {
 
 	query := "SELECT s.id, s.title, s.content, s.created, s.expires, u.name " +
 		"FROM snippets s INNER JOIN users u ON s.author = u.id WHERE s.expires > UTC_TIMESTAMP() " +
-		"ORDER BY created DESC "
+		"AND s.author = ? ORDER BY created DESC "
 
 	if numberToFetch > 0 {
 		query += " limit ?"
 
 	}
-	return sr.fetch(query, numberToFetch)
+	return sr.fetch(query, user, numberToFetch)
 
 }
 
-func (sr *SnippetRepo) Delete(m *models.Snippet) (bool, error) {
-	del := "DELETE FROM snippetbox.snippets WHERE id = ? "
-	result, err := sr.DB.Exec(del, m.ID)
+func (sr *SnippetRepo) Delete(user *models.User, m *models.Snippet) (bool, error) {
+	del := "DELETE FROM snippetbox.snippets WHERE id = ? AND author = ?"
+	result, err := sr.DB.Exec(del, m.ID, user.ID)
 	if err != nil {
 		return false, err
 	}
@@ -80,11 +80,11 @@ func (sr *SnippetRepo) Delete(m *models.Snippet) (bool, error) {
 	return aff == 1, err
 }
 
-func (sr *SnippetRepo) GetByID(ID int) (*models.Snippet, error) {
+func (sr *SnippetRepo) GetByID(user *models.User, ID int) (*models.Snippet, error) {
 	query := "SELECT s.id, s.title, s.content, s.created, s.expires, u.name " +
 		"FROM snippets s INNER JOIN users u ON s.author = u.id WHERE s.expires > UTC_TIMESTAMP() " +
-		"AND s.id = ? LIMIT 1 "
-	snippets, err := sr.fetch(query, ID)
+		"AND s.author = ? AND s.id = ?  LIMIT 1 "
+	snippets, err := sr.fetch(query, user, ID)
 	if err != nil {
 
 		return nil, err
@@ -97,10 +97,10 @@ func (sr *SnippetRepo) GetByID(ID int) (*models.Snippet, error) {
 
 }
 
-func (sr *SnippetRepo) Create(m *models.Snippet) (int64, error) {
-	insert := "INSERT INTO snippets (title,content,created,expires) VALUES" +
-		"( ? , ? , ? , ?)"
-	result, err := sr.DB.Exec(insert, m.Title, m.Content, m.Created, m.Expires)
+func (sr *SnippetRepo) Create(user *models.User, m *models.Snippet) (int64, error) {
+	insert := "INSERT INTO snippets (title,content,created,expires,author) VALUES" +
+		"( ? , ? , ? , ?,?)"
+	result, err := sr.DB.Exec(insert, m.Title, m.Content, m.Created, m.Expires, user.ID)
 	if err != nil {
 		return -1, err
 	}
@@ -109,12 +109,12 @@ func (sr *SnippetRepo) Create(m *models.Snippet) (int64, error) {
 	return id, err
 }
 
-func (sr *SnippetRepo) Update(m *models.Snippet) (bool, error) {
+func (sr *SnippetRepo) Update(user *models.User, m *models.Snippet) (bool, error) {
 	upd := "UPDATE snippets " +
 		"SET title = ? , content = ?, " +
 		"created = ?, expires = ? " +
-		"WHERE id = ? "
-	result, err := sr.DB.Exec(upd, m.Title, m.Content, m.Created, m.Expires, m.ID)
+		"WHERE id = ? AND author = ?"
+	result, err := sr.DB.Exec(upd, m.Title, m.Content, m.Created, m.Expires, m.ID, user.ID)
 	if err != nil {
 		return false, err
 	}
@@ -123,8 +123,8 @@ func (sr *SnippetRepo) Update(m *models.Snippet) (bool, error) {
 
 }
 
-func (sr *SnippetRepo) Latest() (*models.Snippet, error) {
-	snippets, err := sr.Fetch(1)
+func (sr *SnippetRepo) Latest(user *models.User) (*models.Snippet, error) {
+	snippets, err := sr.Fetch(user, 1)
 	if err != nil {
 		return nil, err
 	}
