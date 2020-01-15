@@ -15,12 +15,17 @@ func NewSnippetRepo(db *sql.DB) *SnippetRepo {
 	return &SnippetRepo{DB: db}
 }
 
+var FETCHSQL = "SELECT s.id, s.title, s.content, s.created, s.expires, u.name " +
+	"FROM snippets s INNER JOIN users u ON s.author = u.id " +
+	" LEFT JOIN friends f ON s.Author = f.watched " +
+	" WHERE s.expires > UTC_TIMESTAMP() "
+
 //noinspection ALL
 func (sr *SnippetRepo) fetch(query string, user *models.User, arg int) ([]*models.Snippet, error) {
 	//var ret []models.Snippet
 	//var snip models.Snippet
 
-	rows, err := sr.DB.Query(query, user.ID, arg)
+	rows, err := sr.DB.Query(query, user.ID, user.ID, arg)
 
 	defer rows.Close()
 	if err != nil {
@@ -57,9 +62,10 @@ func (sr *SnippetRepo) FetchAll(user *models.User) ([]*models.Snippet, error) {
 
 func (sr *SnippetRepo) Fetch(user *models.User, numberToFetch int) ([]*models.Snippet, error) {
 
-	query := "SELECT s.id, s.title, s.content, s.created, s.expires, u.name " +
-		"FROM snippets s INNER JOIN users u ON s.author = u.id WHERE s.expires > UTC_TIMESTAMP() " +
-		"AND s.author = ? ORDER BY created DESC "
+	query := FETCHSQL +
+		"AND s.author = ? OR s.author in " +
+		"(SELECT watched FROM friends WHERE watcher = ? )" +
+		" ORDER BY created DESC "
 
 	if numberToFetch > 0 {
 		query += " limit ?"
@@ -81,9 +87,8 @@ func (sr *SnippetRepo) Delete(user *models.User, m *models.Snippet) (bool, error
 }
 
 func (sr *SnippetRepo) GetByID(user *models.User, ID int) (*models.Snippet, error) {
-	query := "SELECT s.id, s.title, s.content, s.created, s.expires, u.name " +
-		"FROM snippets s INNER JOIN users u ON s.author = u.id WHERE s.expires > UTC_TIMESTAMP() " +
-		"AND s.author = ? AND s.id = ?  LIMIT 1 "
+	query := FETCHSQL +
+		"AND (s.author = ? OR s.author in (SELECT watched FROM friends WHERE watched = ? ) ) AND s.id = ?  LIMIT 1 "
 	snippets, err := sr.fetch(query, user, ID)
 	if err != nil {
 

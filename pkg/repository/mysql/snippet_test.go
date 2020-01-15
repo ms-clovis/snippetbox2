@@ -8,6 +8,48 @@ import (
 	"time"
 )
 
+func TestSnippetRepo_Fetch(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+
+	sr := NewSnippetRepo(db)
+
+	defer sr.DB.Close()
+
+	snippet := &models.Snippet{
+
+		Title:   "Test snippet",
+		Content: "I am a test snippet",
+		Created: time.Now(),
+		Expires: time.Now().Add(time.Hour),
+		Author:  "mock@test.com",
+	}
+	user := &models.User{
+		ID: 1,
+	}
+
+	rows := sqlmock.NewRows([]string{"id", "title", "content", "created", "expires", "author"}).
+		AddRow(snippet.ID, snippet.Title, snippet.Content, snippet.Created, snippet.Expires, snippet.Author)
+	mock.ExpectQuery("SELECT").WithArgs(user.ID, user.ID, 1).
+		WillReturnRows(rows)
+
+	snippets, err := sr.Fetch(user, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if *snippets[0] != *snippet {
+		t.Error("Did not get correct snippet")
+	}
+
+	if err = mock.ExpectationsWereMet(); err != nil {
+		t.Error(err)
+		t.Error("Not all expectations were met")
+	}
+
+}
+
 func TestSnippetRepo_Create(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
