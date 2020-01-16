@@ -1,0 +1,30 @@
+{{template "base" .}}
+
+{{define "title"}}Friend/Unfriend{{end}}
+
+{{define "main"}}
+    <!--suppress ALL -->
+    <h2>Users</h2>
+    {{if .Users}}
+        <table>
+            <tr>
+                <th>UserName</th>
+                <th></th>
+            </tr>
+            {{range .Users}}
+                <tr>
+
+                    <td>{{.Name}}</td>
+                    <td>
+                        <form method="get" action="/user/friend">
+                            <input name="ID" type="hidden" value="{{.ID}}">
+                            <button class="buttonEdit" type="submit">Friend</button>
+                        </form>
+                    </td>
+                </tr>
+            {{end}}
+        </table>
+    {{else}}
+        <h5>Sorry No other users available!</h5>
+    {{end}}
+{{end}}

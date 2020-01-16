@@ -66,6 +66,7 @@ func (ur *UserRepository) fetch(query string, arg string) (*models.User, error) 
 	if err != nil {
 		return nil, err
 	}
+
 	user := &models.User{}
 	if rows.Next() {
 		err = rows.Scan(&user.ID, &user.Name, &user.Password, &user.Active)
@@ -81,15 +82,23 @@ func (ur *UserRepository) fetch(query string, arg string) (*models.User, error) 
 	return user, nil
 }
 
+func (ur *UserRepository) GetUsers() ([]*models.User, error) {
+	return nil, nil
+}
+
+var SELECTSQL = "SELECT u.id, u.name, u.password,u.active FROM users u "
+
+//" LEFT JOIN friends f ON u.id = f.watched "
+
 func (ur *UserRepository) GetUser(name string) (*models.User, error) {
-	query := "SELECT id, name, password,active FROM users " +
-		"WHERE name = ? AND active = TRUE LIMIT 1"
+	query := SELECTSQL +
+		" WHERE u.name = ? AND u.active = TRUE LIMIT 1"
 	return ur.fetch(query, name)
 }
 
 func (ur *UserRepository) GetUserByID(id int) (*models.User, error) {
-	query := "SELECT id, name, password,active FROM users " +
-		"WHERE id = ? AND active = TRUE LIMIT 1"
+	query := SELECTSQL +
+		"WHERE u.id = ? AND u.active = TRUE LIMIT 1"
 	return ur.fetchByID(query, id)
 }
 

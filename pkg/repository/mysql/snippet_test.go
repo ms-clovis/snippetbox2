@@ -140,7 +140,7 @@ func TestSnippetRepo_GetByID(t *testing.T) {
 	user := &models.User{ID: 1}
 	rows := sqlmock.NewRows([]string{"id", "title", "content", "created", "expires", "author"}).
 		AddRow(snippet.ID, snippet.Title, snippet.Content, snippet.Created, snippet.Expires, snippet.Author)
-	mock.ExpectQuery("SELECT").WithArgs(1, 1).
+	mock.ExpectQuery("SELECT").WithArgs(1, 1, 1).
 		WillReturnRows(rows)
 
 	s, err := sr.GetByID(user, snippet.ID)

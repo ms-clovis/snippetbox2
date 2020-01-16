@@ -3,6 +3,7 @@ package repository
 import "github.com/ms-clovis/snippetbox/pkg/models"
 
 type UserRepository interface {
+	CloseDB()
 	GetUserByID(id int) (*models.User, error)
 	GetUser(name string) (*models.User, error)
 	IsAuthenticated(hashedPW string, pw string) bool

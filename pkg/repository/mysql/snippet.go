@@ -24,7 +24,6 @@ var FETCHSQL = "SELECT s.id, s.title, s.content, s.created, s.expires, u.name " 
 func (sr *SnippetRepo) fetch(query string, user *models.User, arg int) ([]*models.Snippet, error) {
 	//var ret []models.Snippet
 	//var snip models.Snippet
-
 	rows, err := sr.DB.Query(query, user.ID, user.ID, arg)
 
 	defer rows.Close()

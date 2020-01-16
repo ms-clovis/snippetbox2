@@ -15,12 +15,15 @@
                 <tr>
                     <th>Title</th>
                     <th>Created</th>
-                    <th></th>
+                    <th>Author</th>
+                    <th></th>N
                 </tr>
+                {{$userName := .User.Name}}
                 {{range .Snippets}}
                     <tr>
                         <td><a href='/snippet/display/{{.ID}}'>{{.Title}}</a></td>
                         <td>{{.Created | displayDate}}</td>
+                        <td>{{if eq $userName .Author}}{{.Author}}{{else}}<a href="/user/friend/{{.Author}}">{{.Author}}</a>{{end}}</td>
                         <td>
                             <form method="get" action="/modify/snippet">
                                 <input name="ID" type="hidden" value="{{.ID}}">

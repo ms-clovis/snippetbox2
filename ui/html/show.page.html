@@ -16,14 +16,15 @@
                         <input type="hidden" name="ID" value="{{.ID}}">
                         <button class="buttonEdit" type="submit">Edit</button>
                     </form>
-{{/*                    <a href="/modify/snippet/{{.ID}}">Edit</a>*/}}
+
                 </span>
             </div>
 
             <pre><code>{{.Content}}</code></pre>
             <div class='metadata'>
-                <time>Created: {{.Created | displayDate}}</time>
+                <time>Created: {{.Created | displayDate}}</time>&nbsp;
                 <time>Expires: {{.Expires | displayDate}}</time>
+                <span>Author: {{.Author}}</span>
             </div>
         </div>
     {{end}}
