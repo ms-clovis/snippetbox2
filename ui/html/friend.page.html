@@ -11,15 +11,23 @@
                 <th>UserName</th>
                 <th></th>
             </tr>
+            {{$loggedInUser := .User}}
             {{range .Users}}
                 <tr>
 
                     <td>{{.Name}}</td>
                     <td>
-                        <form method="get" action="/user/friend">
-                            <input name="ID" type="hidden" value="{{.ID}}">
-                            <button class="buttonEdit" type="submit">Friend</button>
-                        </form>
+
+                            <form method="post" action="/user/friend">
+                                <input name="ID" type="hidden" value="{{.ID}}">
+                                {{if ($loggedInUser.IsFriend .)}}
+                                    <button class="buttonEdit" type="submit">Un-Friend</button>
+                                {{else}}
+                                    <button class="buttonEdit" type="submit">&nbsp;&nbsp;&nbsp;Friend</button>
+                                {{end}}
+                            </form>
+
+
                     </td>
                 </tr>
             {{end}}

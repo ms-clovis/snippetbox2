@@ -2,6 +2,7 @@ package mysql
 
 import (
 	"database/sql"
+	"errors"
 	"github.com/ms-clovis/snippetbox/pkg/models"
 )
 
@@ -19,7 +20,7 @@ func (fr *FriendsRepository) CloseDB() {
 
 //noinspection ALL
 func (fr *FriendsRepository) FindFriends(user *models.User) ([]int, error) {
-	query := "SELECT watcher FROM friends WHERE watched = ?"
+	query := "SELECT watched FROM friends WHERE watcher = ?"
 	rows, err := fr.DB.Query(query, user.ID)
 	defer rows.Close()
 	if err != nil {
@@ -36,4 +37,37 @@ func (fr *FriendsRepository) FindFriends(user *models.User) ([]int, error) {
 	}
 	return friends, nil
 
+}
+
+func (fr *FriendsRepository) SetFriend(user *models.User, friendToBe *models.User) (bool, error) {
+	insertSQL := "INSERT INTO snippetbox.friends (watcher,watched) VALUES ( ?,? )"
+	result, err := fr.DB.Exec(insertSQL, user.ID, friendToBe.ID)
+	if err != nil {
+		return false, err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+	if rows != 1 {
+		return false, errors.New("did not insert into friends")
+	}
+	return true, nil
+
+}
+
+func (fr *FriendsRepository) UnFriend(user *models.User, friend *models.User) (bool, error) {
+	delSQL := "DELETE FROM snippetbox.friends WHERE watcher = ? AND watched = ?"
+	result, err := fr.DB.Exec(delSQL, user.ID, friend.ID)
+	if err != nil {
+		return false, err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+	if rows != 1 {
+		return false, errors.New("did not delete from friends")
+	}
+	return true, nil
 }

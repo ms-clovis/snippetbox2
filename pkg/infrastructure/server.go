@@ -28,6 +28,7 @@ type Server struct {
 	HttpServer  *http.Server
 	SnippetRepo repository.SnippetRepository
 	UserRepo    repository.UserRepository
+	FriendRepo  repository.FriendsRepository
 	Router      *gin.Engine
 	//// logging (for now)
 	//ErrorLog *log.Logger
@@ -97,6 +98,7 @@ func (s *Server) notFound(w http.ResponseWriter) {
 	s.clientError(w, http.StatusNotFound)
 }
 
+// creates db connection, tests it, and uses it to create server repos
 func (s *Server) SetRepo(driverName string, dsnString string) {
 	repo, err := sql.Open(driverName, dsnString)
 	if err != nil {
@@ -109,6 +111,7 @@ func (s *Server) SetRepo(driverName string, dsnString string) {
 
 	s.SnippetRepo = mysql.NewSnippetRepo(repo)
 	s.UserRepo = mysql.NewUserRepository(repo)
+	s.FriendRepo = mysql.NewFriendsRepository(repo)
 
 }
 
@@ -454,7 +457,7 @@ func (s *Server) HandleCreateSnippet() http.HandlerFunc {
 		}
 
 		if s.Session != nil {
-			if idStr == "" {
+			if validation.IsBlank(idStr) || idStr == "0" {
 				s.Session.Put(req, "flash", "Snippet successfully created!")
 			} else {
 				s.Session.Put(req, "flash", "Snippet successfully updated!")
@@ -655,9 +658,20 @@ func (s *Server) HandleLoginRegistration() http.HandlerFunc {
 			// create user
 
 			user = s.CreateUser(emailName, password, w)
+			//friends,err := s.FriendRepo.FindFriends(user)
+			//if err !=nil{
+			//	s.serverError(w,err)
+			//}
+			//user.SetFriendsMap(friends)
 			s.SessionMap[user.Password] = user
+
 			r.Method = http.MethodGet
-			s.HandleHomePage(nil).ServeHTTP(w, r)
+			data := s.getDefaultDataVals(nil, r)
+			data.User = user
+			data.IsAuthenticated = true
+			data.CSRFToken = nosurf.Token(r)
+			data.Message = ""
+			s.HandleHomePage(data).ServeHTTP(w, r)
 			//http.Redirect(w, r, "/", http.StatusSeeOther)
 			return
 		}
@@ -689,10 +703,18 @@ func (s *Server) HandleLoginRegistration() http.HandlerFunc {
 		s.SessionMap[user.Password] = user
 
 		data := s.getDefaultDataVals(nil, r)
+		//friends,err := s.FriendRepo.FindFriends(user)
+		//if err !=nil{
+		//	s.serverError(w,err)
+		//}
+		//user.SetFriendsMap(friends)
 		data.User = user
-		data.Message = fmt.Sprintf("Welcome back %v", user.Name)
+
+		data.Message = fmt.Sprintf("Hello %v", user.Name)
+
 		data.IsAuthenticated = true
 		r.Method = http.MethodGet
+
 		s.HandleHomePage(data).ServeHTTP(w, r)
 		//http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
@@ -770,5 +792,122 @@ func (s *Server) RemoveSessionInfo(r *http.Request, w http.ResponseWriter) {
 	}
 	delete(s.SessionMap, sessionID.Value)
 	s.setSessionIDCookie(w, "") // will delete cookie
+
+}
+
+func (s Server) HandleFriends() http.HandlerFunc {
+	files := []string{
+		"./ui/html/friend.page.html",
+		"./ui/html/base.layout.html",
+		"./ui/html/footer.partial.html",
+	}
+	tmpl := s.ParseTemplates("friend.page.html", files)
+	return func(w http.ResponseWriter, r *http.Request) {
+		s.Slog.Info("handle friends")
+		switch r.Method {
+		case http.MethodGet:
+			s.handleShowFriends(w, r, tmpl)
+		case http.MethodPost:
+			s.handleMakeFriends(w, r, tmpl)
+		default:
+			s.clientError(w, http.StatusMethodNotAllowed)
+
+		}
+	}
+}
+
+func (s *Server) handleMakeFriends(w http.ResponseWriter, r *http.Request, tmpl *template.Template) {
+	slog.Info("making friends")
+	s.logPathAndMethod(r)
+	data := s.getDefaultDataVals(nil, r)
+	err := r.ParseForm()
+	if err != nil {
+		s.serverError(w, err)
+		return
+	}
+	idStr := r.PostFormValue("ID")
+	if validation.IsBlank(idStr) {
+		s.clientError(w, http.StatusBadRequest)
+		return
+
+	}
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		s.serverError(w, err)
+		return
+	}
+	friendly, err := s.UserRepo.GetUserByID(id)
+	if friendly == nil {
+		s.clientError(w, http.StatusBadRequest)
+		return
+	}
+	if data.User.IsFriend(friendly) {
+		// unfriend
+		unfriend, err := s.FriendRepo.UnFriend(data.User, friendly)
+		if err != nil {
+			s.serverError(w, err)
+			return
+		}
+		if !unfriend {
+			s.clientError(w, http.StatusBadRequest)
+			return
+		}
+
+	} else {
+		// friend
+		friended, err := s.FriendRepo.SetFriend(data.User, friendly)
+		if err != nil {
+			s.serverError(w, err)
+			return
+		}
+		if !friended {
+			s.clientError(w, http.StatusBadRequest)
+			return
+		}
+	}
+
+	s.handleShowFriends(w, r, tmpl)
+
+}
+
+func (s *Server) handleShowFriends(w http.ResponseWriter, r *http.Request, tmpl *template.Template) {
+	slog.Info("showing friends")
+	s.logPathAndMethod(r)
+	err := r.ParseForm()
+	if err != nil {
+		slog.Error(err)
+	}
+	urlStr := r.URL.String()
+	s.Slog.Info(urlStr)
+	var nameStr = ""
+	urlVals := strings.Split(urlStr, "/")
+	if len(urlVals) == 4 {
+		nameStr = urlVals[3]
+	}
+
+	//fmt.Println(id)
+	data := s.getDefaultDataVals(nil, r)
+
+	friends, err := s.FriendRepo.FindFriends(data.User)
+	if err != nil {
+		s.serverError(w, err)
+	}
+	data.User.SetFriendsMap(friends)
+
+	if nameStr == "" || nameStr == "all" {
+		others, err := s.UserRepo.GetUsers(data.User)
+		if err != nil {
+			s.serverError(w, err)
+		}
+		data.Users = others
+	} else {
+		other, err := s.UserRepo.GetUser(nameStr)
+		if err != nil {
+			s.serverError(w, err)
+		}
+		data.Users = []*models.User{other}
+	}
+
+	s.CatchTemplateErrors(tmpl, data, w)
 
 }

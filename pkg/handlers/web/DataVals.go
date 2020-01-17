@@ -7,6 +7,7 @@ import (
 type DataVals struct {
 	Errors          map[string]string
 	User            *models.User
+	Users           []*models.User
 	Snippets        []*models.Snippet
 	Snippet         *models.Snippet
 	ExpiresDays     string

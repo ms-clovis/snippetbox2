@@ -22,11 +22,12 @@
             <a href="/latest">Latest</a>
             <a href="/snippet/create">Create a Snippet</a>
             {{if .IsAuthenticated}}
-                <a href="/user/logout">{{.User.Name}} Logout</a>
+                <a href="/user/logout">Logout</a>
                 <a href="/display/password">Change Password</a>
             {{else}}
                 <a href="/display/login">Login/Register</a>
             {{end}}
+            <a href="/user/friend/all">Friend Users</a>
         </nav>
         <main>
             {{template "main" .}}

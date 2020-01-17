@@ -16,6 +16,14 @@ type MockUserRepository struct {
 	DB *sql.DB
 }
 
+func NewMockUserRepository(DB *sql.DB) *MockUserRepository {
+	return &MockUserRepository{DB: DB}
+}
+
+func (mr *MockUserRepository) CloseDB() {
+	mr.DB.Close()
+}
+
 func (mr *MockUserRepository) GetUserByID(id int) (*models.User, error) {
 	if id == int(fakeUser.ID) {
 		return fakeUser, nil
@@ -34,11 +42,15 @@ func (mr *MockUserRepository) IsAuthenticated(hashedPW string, pw string) bool {
 	return true
 }
 func (mr *MockUserRepository) Create(u *models.User) (int64, error) {
-	if *u == *fakeUser {
+	if u == fakeUser {
 		return fakeUser.ID, nil
 	}
 	return 0, models.ERRUserAlreadyExists
 }
 func (mr *MockUserRepository) Update(u *models.User) (bool, error) {
 	return true, nil
+}
+
+func (mr *MockUserRepository) GetUsers(user *models.User) ([]*models.User, error) {
+	return []*models.User{fakeUser}, nil
 }

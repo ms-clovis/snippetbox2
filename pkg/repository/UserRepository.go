@@ -9,4 +9,5 @@ type UserRepository interface {
 	IsAuthenticated(hashedPW string, pw string) bool
 	Create(u *models.User) (int64, error)
 	Update(u *models.User) (bool, error)
+	GetUsers(user *models.User) ([]*models.User, error)
 }

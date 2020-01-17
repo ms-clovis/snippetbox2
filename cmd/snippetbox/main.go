@@ -17,7 +17,7 @@ import (
 func main() {
 	// set and parse flags --addr
 	addr := flag.String("addr", ":8080", "web server's listening address")
-	dsn := flag.String("dsn", "web:password@/snippetbox?parseTime=true", "MySQL data source name")
+	dsn := flag.String("dsn", "mike:mike@/snippetbox?parseTime=true", "MySQL data source name")
 	secret := flag.String("secret", "s6Ndh+pPbnzHbS*+9Pk8qGWhTzbpa@ge", "Secret key")
 
 	flag.Parse()

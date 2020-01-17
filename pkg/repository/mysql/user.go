@@ -82,8 +82,26 @@ func (ur *UserRepository) fetch(query string, arg string) (*models.User, error) 
 	return user, nil
 }
 
-func (ur *UserRepository) GetUsers() ([]*models.User, error) {
-	return nil, nil
+func (ur *UserRepository) GetUsers(user *models.User) ([]*models.User, error) {
+	query := SELECTSQL +
+		" WHERE u.id != ? AND u.active = TRUE"
+	rows, err := ur.DB.Query(query, user.ID)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	users := make([]*models.User, 0)
+
+	for rows.Next() {
+		u := &models.User{}
+		err = rows.Scan(&u.ID, &u.Name, &u.Password, &u.Active)
+		if err != nil {
+			return nil, err
+		}
+		users = append(users, u)
+	}
+	return users, nil
 }
 
 var SELECTSQL = "SELECT u.id, u.name, u.password,u.active FROM users u "
