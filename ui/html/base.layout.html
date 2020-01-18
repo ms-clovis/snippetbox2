@@ -18,16 +18,16 @@
             <h1><a href='/'>Snippetbox</a></h1>
         </header>
         <nav>
-            <a href='/'>Home</a>
-            <a href="/latest">Latest</a>
-            <a href="/snippet/create">Create a Snippet</a>
+            <a href='/' {{if eq .CurrentLink "H"}} class="live" {{end}}>Home</a>
+            <a href="/latest" {{if eq .CurrentLink "LA"}} class="live" {{end}}>Latest</a>
+            <a href="/snippet/create" {{if eq .CurrentLink "CS"}} class="live" {{end}}>Create a Snippet</a>
+            <a href="/user/friend/all" {{if eq .CurrentLink "F"}} class="live" {{end}}>Friend Users</a>
             {{if .IsAuthenticated}}
-                <a href="/user/logout">Logout</a>
-                <a href="/display/password">Change Password</a>
+                <a href="/user/logout" {{if eq .CurrentLink "UL"}} class="live" {{end}}>Logout</a>
+                <a href="/display/password" {{if eq .CurrentLink "CP"}} class="live" {{end}}>Change Password</a>
             {{else}}
-                <a href="/display/login">Login/Register</a>
+                <a href="/display/login" {{if eq .CurrentLink "LR"}} class="live" {{end}}>Login/Register</a>
             {{end}}
-            <a href="/user/friend/all">Friend Users</a>
         </nav>
         <main>
             {{template "main" .}}
