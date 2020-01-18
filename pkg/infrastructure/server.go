@@ -131,6 +131,7 @@ func (s *Server) HandleLoginShowForm(data *web.DataVals) http.HandlerFunc {
 			data = s.getDefaultDataVals(data, r)
 		}
 		data.CSRFToken = nosurf.Token(r) // need all times for the login
+		data.CurrentLink = "LR"
 
 		s.logPathAndMethod(r)
 		if !s.isCorrectHttpMethod(r, w, http.MethodGet) {
@@ -168,6 +169,7 @@ func (s *Server) HandleHomePage(data *web.DataVals) http.HandlerFunc {
 			data = s.getDefaultDataVals(data, r)
 		}
 		data.CSRFToken = nosurf.Token(r)
+		data.CurrentLink = "H"
 		s.logPathAndMethod(r)
 
 		if r.Method != http.MethodGet && r.Method != http.MethodPost {
@@ -236,6 +238,7 @@ func (s *Server) HandleDisplaySnippet() http.HandlerFunc {
 			return
 		}
 		data := s.getDefaultDataVals(nil, r)
+		data.CurrentLink = "LA"
 
 		snippet, err := s.SnippetRepo.GetByID(data.User, id)
 		if err != nil {
@@ -304,6 +307,7 @@ func (s *Server) HandleChangePassword() http.HandlerFunc {
 		}
 		user := s.getSessionUser(r)
 		data := s.getDefaultDataVals(nil, r)
+		data.CurrentLink = "CP"
 
 		oldPass := r.PostFormValue("extPass")
 		newPass := r.PostFormValue("newPass")
@@ -365,6 +369,7 @@ func (s *Server) HandleChangePasswordForm(data *web.DataVals) http.HandlerFunc {
 		if data == nil || !data.IsAuthenticated {
 			data = s.getDefaultDataVals(data, r)
 		}
+		data.CurrentLink = "CP"
 		s.CatchTemplateErrors(tmpl, data, w)
 	}
 }
@@ -410,6 +415,7 @@ func (s *Server) HandleCreateSnippet() http.HandlerFunc {
 		//get user from map
 
 		data := s.getDefaultDataVals(nil, req)
+		data.CurrentLink = "CS"
 		if validation.IsBlank(title) {
 			//e = append(e,"Must have title")
 			e["Title"] = "The Snippet must have a title"
@@ -486,6 +492,7 @@ func (s *Server) HandleLatestSnippet() http.HandlerFunc {
 			return
 		}
 		data := s.getDefaultDataVals(nil, r)
+		data.CurrentLink = "LA"
 		snippet, err := s.SnippetRepo.Latest(data.User)
 		if err != nil {
 			s.Slog.Error(err)
@@ -587,6 +594,7 @@ func (s Server) HandleShowSnippetForm(data *web.DataVals) http.HandlerFunc {
 		idStr := r.FormValue("ID")
 
 		data = s.getDefaultDataVals(data, r)
+		data.CurrentLink = "CS"
 		if idStr != "" && idStr != "0" {
 			id, err := strconv.Atoi(idStr)
 			if err != nil {
@@ -639,6 +647,7 @@ func (s *Server) HandleLoginRegistration() http.HandlerFunc {
 			user := &models.User{Name: emailName, Password: password}
 
 			data := s.getDefaultDataVals(nil, r)
+			data.CurrentLink = "LR"
 
 			data.Title = "Login - Registration"
 			data.Errors = errs
@@ -771,6 +780,7 @@ func (s *Server) LoginForNoSession(next http.Handler) http.Handler {
 			if _, ok := s.SessionMap[sessionID.Value]; !ok {
 				s.RemoveSessionInfo(r, w)
 				http.Redirect(w, r, "/display/login", http.StatusSeeOther)
+				return
 			}
 		}
 
@@ -887,6 +897,7 @@ func (s *Server) handleShowFriends(w http.ResponseWriter, r *http.Request, tmpl 
 
 	//fmt.Println(id)
 	data := s.getDefaultDataVals(nil, r)
+	data.CurrentLink = "FR"
 
 	friends, err := s.FriendRepo.FindFriends(data.User)
 	if err != nil {
