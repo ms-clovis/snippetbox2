@@ -89,9 +89,9 @@ func TestUserRepository_GetUser(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if user.ID != u.ID || u.Name != user.Name ||
-		user.Password != u.Password || user.Active != u.Active {
-		t.Error("Did not retrieve user by name")
+
+	if !u.Equals(user) {
+		t.Error("Did not retrieve correct user by name")
 	}
 }
 
