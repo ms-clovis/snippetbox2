@@ -56,7 +56,8 @@ func TestUserRepository_GetUserByID(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if user != u {
+	if user.ID != u.ID || u.Name != user.Name ||
+		user.Password != u.Password || user.Active != u.Active {
 		t.Error("Did not retrieve user by ID")
 	}
 
@@ -88,8 +89,9 @@ func TestUserRepository_GetUser(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if user != u {
-		t.Error("Did not return user by Name")
+	if user.ID != u.ID || u.Name != user.Name ||
+		user.Password != u.Password || user.Active != u.Active {
+		t.Error("Did not retrieve user by name")
 	}
 }
 
