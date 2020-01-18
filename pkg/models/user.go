@@ -1,6 +1,9 @@
 package models
 
-import "golang.org/x/crypto/bcrypt"
+import (
+	"golang.org/x/crypto/bcrypt"
+	"reflect"
+)
 
 type User struct {
 	ID       int64
@@ -28,4 +31,10 @@ func (u *User) SetFriendsMap(friends []int) {
 		m[friend] = true
 	}
 	u.Friends = m
+}
+
+func (u *User) Equals(o *User) bool {
+	return u.ID == o.ID && u.Name == o.Name &&
+		u.Active == o.Active && u.Password == o.Password &&
+		reflect.DeepEqual(u.Friends, o.Friends)
 }
