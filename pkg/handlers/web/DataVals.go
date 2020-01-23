@@ -16,4 +16,5 @@ type DataVals struct {
 	IsAuthenticated bool
 	CurrentYear     int
 	CSRFToken       string
+	CurrentLink     string
 }
