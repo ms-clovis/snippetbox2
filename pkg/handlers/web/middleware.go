@@ -32,8 +32,7 @@ func SecureHeaders(next http.Handler) http.Handler {
 
 func RecoverPanic(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		//w := ctx.Writer
-		//r := ctx.Request
+
 		// Create a deferred function (which will always be run in the event
 		// of a panic as Go unwinds the stack).
 		defer func() {

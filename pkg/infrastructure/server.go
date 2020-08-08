@@ -38,8 +38,8 @@ type Server struct {
 	Slog       *slog.Logger
 }
 
-func checkSessionMapForExpiredSessions() {
-	// not ready for this yet
+func (s *Server) checkSessionMapForExpiredSessions() {
+
 }
 
 func NewServer() *Server {
@@ -55,7 +55,7 @@ func NewServer() *Server {
 				return
 			case <-ticker.C:
 				// check for expired user sessions
-				checkSessionMapForExpiredSessions()
+				s.checkSessionMapForExpiredSessions()
 
 			}
 		}
@@ -102,11 +102,13 @@ func (s *Server) notFound(w http.ResponseWriter) {
 func (s *Server) SetRepo(driverName string, dsnString string) {
 	repo, err := sql.Open(driverName, dsnString)
 	if err != nil {
-		log.Fatal(err)
+		slog.Fatal(err)
+		panic(err)
 	}
 	if err = repo.Ping(); err != nil {
 
-		log.Fatal(err)
+		slog.Fatal(err)
+		panic(err)
 	}
 
 	s.SnippetRepo = mysql.NewSnippetRepo(repo)
@@ -743,6 +745,7 @@ func (s *Server) CreateUser(emailName string, password string, w http.ResponseWr
 	id, err := s.UserRepo.Create(u)
 	if err != nil {
 		s.serverError(w, err)
+		return nil
 	}
 	u.ID = id
 	s.setSessionIDCookie(w, u.Password)
@@ -797,6 +800,7 @@ func (s *Server) HandleLogOut() http.Handler {
 
 func (s *Server) RemoveSessionInfo(r *http.Request, w http.ResponseWriter) {
 	sessionID, err := r.Cookie("sessionid")
+
 	if err != nil {
 		sessionID = &http.Cookie{Value: "none"}
 	}
