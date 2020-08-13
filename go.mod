@@ -1,4 +1,4 @@
-module github.com/ms-clovis/snippetbox
+module github.com/ms-clovis/snippetbox2
 
 go 1.13
 
