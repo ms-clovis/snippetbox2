@@ -2,7 +2,7 @@ package mysql
 
 import (
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/ms-clovis/snippetbox/pkg/models"
+	"github.com/ms-clovis/snippetbox2/pkg/models"
 	"testing"
 )
 

@@ -1,7 +1,7 @@
 package validation
 
 import (
-	"github.com/ms-clovis/snippetbox/pkg/models"
+	"github.com/ms-clovis/snippetbox2/pkg/models"
 	"testing"
 )
 

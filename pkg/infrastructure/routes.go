@@ -3,8 +3,8 @@ package infrastructure
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/justinas/alice"
-	"github.com/ms-clovis/snippetbox/pkg/handlers/web"
-	"github.com/ms-clovis/snippetbox/pkg/models"
+	"github.com/ms-clovis/snippetbox2/pkg/handlers/web"
+	"github.com/ms-clovis/snippetbox2/pkg/models"
 	"net/http"
 )
 

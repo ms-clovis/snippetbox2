@@ -1,12 +1,12 @@
-package snippetbox
+package snippetbox2
 
 import (
 	"fmt"
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/ms-clovis/snippetbox/pkg/infrastructure"
-	"github.com/ms-clovis/snippetbox/pkg/models"
-	"github.com/ms-clovis/snippetbox/pkg/repository/mock"
-	"github.com/ms-clovis/snippetbox/pkg/repository/mysql"
+	"github.com/ms-clovis/snippetbox2/pkg/infrastructure"
+	"github.com/ms-clovis/snippetbox2/pkg/models"
+	"github.com/ms-clovis/snippetbox2/pkg/repository/mock"
+	"github.com/ms-clovis/snippetbox2/pkg/repository/mysql"
 	"net/http"
 	"net/http/httptest"
 	"net/url"

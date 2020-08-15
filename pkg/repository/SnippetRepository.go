@@ -1,6 +1,6 @@
 package repository
 
-import "github.com/ms-clovis/snippetbox/pkg/models"
+import "github.com/ms-clovis/snippetbox2/pkg/models"
 
 type SnippetRepository interface {
 	Fetch(user *models.User, numberToFetch int) ([]*models.Snippet, error)

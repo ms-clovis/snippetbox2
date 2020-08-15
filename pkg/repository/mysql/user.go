@@ -3,8 +3,8 @@ package mysql
 import (
 	"database/sql"
 	slog "github.com/go-eden/slf4go"
-	"github.com/ms-clovis/snippetbox/pkg/handlers/validation"
-	"github.com/ms-clovis/snippetbox/pkg/models"
+	"github.com/ms-clovis/snippetbox2/pkg/handlers/validation"
+	"github.com/ms-clovis/snippetbox2/pkg/models"
 )
 
 type UserRepository struct {

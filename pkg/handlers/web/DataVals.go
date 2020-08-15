@@ -1,7 +1,7 @@
 package web
 
 import (
-	"github.com/ms-clovis/snippetbox/pkg/models"
+	"github.com/ms-clovis/snippetbox2/pkg/models"
 )
 
 type DataVals struct {

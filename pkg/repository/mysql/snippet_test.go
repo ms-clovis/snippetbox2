@@ -3,7 +3,7 @@ package mysql
 import (
 	"github.com/DATA-DOG/go-sqlmock"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/ms-clovis/snippetbox/pkg/models"
+	"github.com/ms-clovis/snippetbox2/pkg/models"
 	"testing"
 	"time"
 )

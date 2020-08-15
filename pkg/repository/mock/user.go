@@ -2,7 +2,7 @@ package mock
 
 import (
 	"database/sql"
-	"github.com/ms-clovis/snippetbox/pkg/models"
+	"github.com/ms-clovis/snippetbox2/pkg/models"
 )
 
 var fakeUser = &models.User{

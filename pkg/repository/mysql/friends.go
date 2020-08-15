@@ -3,7 +3,7 @@ package mysql
 import (
 	"database/sql"
 	"errors"
-	"github.com/ms-clovis/snippetbox/pkg/models"
+	"github.com/ms-clovis/snippetbox2/pkg/models"
 )
 
 type FriendsRepository struct {
